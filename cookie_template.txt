@@ -1,0 +1,315 @@
+════════════════════════════════════════════════════════════════════════════════
+🍪 HƯỚNG DẪN LẤY COOKIE FREEPIK PREMIUM (QUAN TRỌNG!)
+════════════════════════════════════════════════════════════════════════════════
+
+⚠️  CHÚ Ý: Bạn phải có tài khoản Freepik Premium để sử dụng AI tools!
+
+📋 CÁCH LẤY COOKIE TỪ FIREFOX (KHUYÊN DÙNG):
+
+1. 🌐 Mở Firefox, đăng nhập vào https://www.freepik.com
+2. 🔑 Đảm bảo đã đăng nhập và có quyền Premium
+3. 🛠️ Nhấn F12 để mở Developer Tools
+4. 📂 Vào tab "Storage" 
+5. 🍪 Click vào "Cookies" → "https://www.freepik.com"
+6. 📋 Copy tất cả cookies theo định dạng JSON
+
+🔧 CÁCH EXPORT COOKIE JSON:
+- Click chuột phải vào cookie list → "Export All" hoặc "Copy All"
+- Hoặc sử dụng Console: document.cookie
+
+📝 ĐỊNH DẠNG COOKIE:
+Paste cookie JSON array vào dưới đây (thay thế phần === ===):
+
+=== PASTE COOKIE JSON VÀO ĐÂY ===
+[
+    {
+        "name": "ab.storage.sessionId.8086d9ee-1f81-4508-ba9f-3a661635ac90",
+        "value": "g%3A1b8c5ba7-92bc-e55d-8348-5d12423437a6%7Ce%3A1750210833284%7Cc%3A1750174407564%7Cl%3A1750174833284",
+        "domain": ".freepik.com",
+        "hostOnly": false,
+        "path": "/",
+        "secure": false,
+        "httpOnly": false,
+        "sameSite": "no_restriction",
+        "session": false,
+        "firstPartyDomain": "",
+        "partitionKey": null,
+        "expirationDate": 1784734833,
+        "storeId": null
+    },
+    {
+        "name": "ak_bmsc",
+        "value": "C61C6B200AC74799E2A6E06B2EF50E75~000000000000000000000000000000~YAAQ91FNG3UDoHqXAQAA4a2EfhwwmxMzyuMHKlFYg4o22TaL46fi5o2mNBPiMMJu536IxfTJuAVazN76qLWH5XGJVSXsrR0s9MU2BCpbmMVnUSelLPf+f28/TOW2z8WpPPJCM0KpAf7OuE0NY8Fa1BxJwpACbRMpKgpBrpVVaDYn0372Cw3UNVikLndHNme1VbuFnsBs4OjzUj0vUYTuFrDKlYs4P5Z1TZgv5gwHxX78yC0a2PNL6kN0PVvNM6S/liy4NPBNtIeFf2GMV79q7wuMYtr1nK7Q7OlVlkP/Ch+tHfq2AzROU7AP2RYd3rO+hkrOXeI8jsyIDXH/vPy1s/KO3EpybIolcrT85/oPgjEvfs/p3BwVG41LIKZC94mqBbKzkYMWO7RfkdA=",
+        "domain": ".freepik.com",
+        "hostOnly": false,
+        "path": "/",
+        "secure": false,
+        "httpOnly": false,
+        "sameSite": "no_restriction",
+        "session": false,
+        "firstPartyDomain": "",
+        "partitionKey": null,
+        "expirationDate": 1750181514,
+        "storeId": null
+    },
+    {
+        "name": "FP_TE",
+        "value": "1750178004",
+        "domain": "www.freepik.com",
+        "hostOnly": true,
+        "path": "/",
+        "secure": false,
+        "httpOnly": false,
+        "sameSite": "no_restriction",
+        "session": false,
+        "firstPartyDomain": "",
+        "partitionKey": null,
+        "expirationDate": 1750178005,
+        "storeId": null
+    },
+    {
+        "name": "_ga_QWX66025LC",
+        "value": "GS2.1.s1750174315$o1$g1$t1750174759$j60$l0$h0",
+        "domain": ".freepik.com",
+        "hostOnly": false,
+        "path": "/",
+        "secure": false,
+        "httpOnly": false,
+        "sameSite": "no_restriction",
+        "session": false,
+        "firstPartyDomain": "",
+        "partitionKey": null,
+        "expirationDate": 1784734759,
+        "storeId": null
+    },
+    {
+        "name": "ab.storage.userId.8086d9ee-1f81-4508-ba9f-3a661635ac90",
+        "value": "g%3A44303701%7Ce%3Aundefined%7Cc%3A1750174407563%7Cl%3A1750174407564",
+        "domain": ".freepik.com",
+        "hostOnly": false,
+        "path": "/",
+        "secure": false,
+        "httpOnly": false,
+        "sameSite": "no_restriction",
+        "session": false,
+        "firstPartyDomain": "",
+        "partitionKey": null,
+        "expirationDate": 1784734759,
+        "storeId": null
+    },
+    {
+        "name": "_ga",
+        "value": "GA1.1.94319882.1750174315",
+        "domain": ".freepik.com",
+        "hostOnly": false,
+        "path": "/",
+        "secure": false,
+        "httpOnly": false,
+        "sameSite": "no_restriction",
+        "session": false,
+        "firstPartyDomain": "",
+        "partitionKey": null,
+        "expirationDate": 1784734759,
+        "storeId": null
+    },
+    {
+        "name": "OptanonAlertBoxClosed",
+        "value": "2025-06-17T15:31:56.029Z",
+        "domain": ".freepik.com",
+        "hostOnly": false,
+        "path": "/",
+        "secure": false,
+        "httpOnly": false,
+        "sameSite": "lax",
+        "session": false,
+        "firstPartyDomain": "",
+        "partitionKey": null,
+        "expirationDate": 1781710316,
+        "storeId": null
+    },
+    {
+        "name": "sb-prefs",
+        "value": "%7B%22mode%22%3A%22anchored%22%2C%22submenus%22%3A%7B%22site%22%3A%22tools%22%2C%22user%22%3A%22workspace%22%7D%7D",
+        "domain": "www.freepik.com",
+        "hostOnly": true,
+        "path": "/",
+        "secure": false,
+        "httpOnly": false,
+        "sameSite": "no_restriction",
+        "session": true,
+        "firstPartyDomain": "",
+        "partitionKey": null,
+        "storeId": null
+    },
+    {
+        "name": "_gcl_au",
+        "value": "1.1.1852352795.1750174315",
+        "domain": ".freepik.com",
+        "hostOnly": false,
+        "path": "/",
+        "secure": false,
+        "httpOnly": false,
+        "sameSite": "no_restriction",
+        "session": false,
+        "firstPartyDomain": "",
+        "partitionKey": null,
+        "expirationDate": 1757950315,
+        "storeId": null
+    },
+    {
+        "name": "ab.storage.deviceId.8086d9ee-1f81-4508-ba9f-3a661635ac90",
+        "value": "g%3A38a9efbe-c2bf-3499-2adf-92a4b4d8ef6e%7Ce%3Aundefined%7Cc%3A1750174407565%7Cl%3A1750174407565",
+        "domain": ".freepik.com",
+        "hostOnly": false,
+        "path": "/",
+        "secure": false,
+        "httpOnly": false,
+        "sameSite": "no_restriction",
+        "session": false,
+        "firstPartyDomain": "",
+        "partitionKey": null,
+        "expirationDate": 1784734759,
+        "storeId": null
+    },
+    {
+        "name": "FP_MBL",
+        "value": "1",
+        "domain": "www.freepik.com",
+        "hostOnly": true,
+        "path": "/",
+        "secure": false,
+        "httpOnly": false,
+        "sameSite": "no_restriction",
+        "session": true,
+        "firstPartyDomain": "",
+        "partitionKey": null,
+        "storeId": null
+    },
+    {
+        "name": "g_state",
+        "value": "{\"i_l\":0}",
+        "domain": "www.freepik.com",
+        "hostOnly": true,
+        "path": "/",
+        "secure": false,
+        "httpOnly": false,
+        "sameSite": "no_restriction",
+        "session": false,
+        "firstPartyDomain": "",
+        "partitionKey": null,
+        "expirationDate": 1765726402,
+        "storeId": null
+    },
+    {
+        "name": "GR_LGURI",
+        "value": "https://www.freepik.com/",
+        "domain": ".freepik.com",
+        "hostOnly": false,
+        "path": "/",
+        "secure": false,
+        "httpOnly": false,
+        "sameSite": "no_restriction",
+        "session": false,
+        "firstPartyDomain": "",
+        "partitionKey": null,
+        "expirationDate": 1781710314,
+        "storeId": null
+    },
+    {
+        "name": "GR_REFRESH",
+        "value": "AMf-vByJfLRdqK0kSDD8p3nBfIFRWLnWvUo1dnG8aJVdN3qsD5FbXDFI3Av8FUI3d-YdkWihoh5WBaijjbVGAlfdI_kHLt9_ALB46acvFcVMP-5bEws7tSsolTnJoyYiNVOIBR-grQWCD7p6ouWtaEI60GpN6eP25nvo8GM6iSgvOjXFQ5EFHA9yqcJFRE1T1wBtPxmS1_an",
+        "domain": ".freepik.com",
+        "hostOnly": false,
+        "path": "/",
+        "secure": true,
+        "httpOnly": true,
+        "sameSite": "no_restriction",
+        "session": false,
+        "firstPartyDomain": "",
+        "partitionKey": null,
+        "expirationDate": 1752766404,
+        "storeId": null
+    },
+    {
+        "name": "GR_TOKEN",
+        "value": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjNiZjA1MzkxMzk2OTEzYTc4ZWM4MGY0MjcwMzM4NjM2NDA2MTBhZGMiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiaWRlbnlhZmx1eCIsInBpY3R1cmUiOiJodHRwczovL2F2YXRhci5jZG5way5uZXQvZGVmYXVsdF8wNS5wbmciLCJhY2NvdW50c191c2VyX2lkIjo0NDMwMzcwMSwic2NvcGVzIjoiZnJlZXBpay9pbWFnZXMgZnJlZXBpay92aWRlb3MgZmxhdGljb24vcG5nIGZyZWVwaWsvaW1hZ2VzL3ByZW1pdW0gZnJlZXBpay92aWRlb3MvcHJlbWl1bSBmbGF0aWNvbi9zdmciLCJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vZmMtcHJvZmlsZS1wcm8tcmV2MSIsImF1ZCI6ImZjLXByb2ZpbGUtcHJvLXJldjEiLCJhdXRoX3RpbWUiOjE3NTAxNzQ0MDQsInVzZXJfaWQiOiIzMzQyNDllYjllYjk0YTA1YmFmZDg2NzYzZDc5NTg3NyIsInN1YiI6IjMzNDI0OWViOWViOTRhMDViYWZkODY3NjNkNzk1ODc3IiwiaWF0IjoxNzUwMTc0NDA0LCJleHAiOjE3NTAxNzgwMDQsImVtYWlsIjoiZmx1eC5yZXZpZXdAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImZpcmViYXNlIjp7ImlkZW50aXRpZXMiOnsiZ29vZ2xlLmNvbSI6WyIxMTI0NDcxMjM1MTMwMjU4Mzc3OTciXSwiZW1haWwiOlsiZmx1eC5yZXZpZXdAZ21haWwuY29tIl19LCJzaWduX2luX3Byb3ZpZGVyIjoiY3VzdG9tIn19.kstM9JbV6CHquMtUYwxKc8xPelLWpk35FiSs6hFSGrYzzGIC1bCuYVZONJJh2d6NKRfs8tSJEeYWAwEqz1h94GlMkmC28zQinZkvg-XIBKc5iAfMatErQsR1J3n-KjhvlsTK8ufoR1_APxLQhpRkxj9Vt5PSPxf-BHODHJol1eeh6tR2YVQE2eHy-YxHlxLCqyH6HixpDDx6UqYamtW_wzAmb9is1nj_UlAFn-FQSAobk6J87Zw_tts-SOsMLvZtrr8Yrx7eds598xmmCKhnQUHVR4rdg9Z24KH3aABOkeZfGBvPYtOpCqL0yyWmGNYexP6uBkS4bmafacnvgbbYCA",
+        "domain": ".freepik.com",
+        "hostOnly": false,
+        "path": "/",
+        "secure": true,
+        "httpOnly": true,
+        "sameSite": "no_restriction",
+        "session": false,
+        "firstPartyDomain": "",
+        "partitionKey": null,
+        "expirationDate": 1750178004,
+        "storeId": null
+    },
+    {
+        "name": "GRID",
+        "value": "44303701",
+        "domain": ".freepik.com",
+        "hostOnly": false,
+        "path": "/",
+        "secure": false,
+        "httpOnly": false,
+        "sameSite": "no_restriction",
+        "session": false,
+        "firstPartyDomain": "",
+        "partitionKey": null,
+        "expirationDate": 1752766406,
+        "storeId": null
+    },
+    {
+        "name": "OptanonConsent",
+        "value": "isGpcEnabled=0&datestamp=Tue+Jun+17+2025+22%3A39%3A19+GMT%2B0700+(Indochina+Time)&version=202505.1.0&browserGpcFlag=0&isIABGlobal=false&hosts=&consentId=57fc3d91-0ac6-4d3b-839f-d3c384da0ba0&interactionCount=1&isAnonUser=1&landingPath=NotLandingPage&groups=C0001%3A1%2CC0002%3A0%2CC0003%3A0%2CC0004%3A0%2CC0005%3A0&intType=3&geolocation=VN%3BSG&AwaitingReconsent=false",
+        "domain": ".freepik.com",
+        "hostOnly": false,
+        "path": "/",
+        "secure": false,
+        "httpOnly": false,
+        "sameSite": "lax",
+        "session": false,
+        "firstPartyDomain": "",
+        "partitionKey": null,
+        "expirationDate": 1781710759,
+        "storeId": null
+    },
+    {
+        "name": "ph_phc_Rc6y1yvZwwwR09Pl9NtKBo5gzpxr1Ei4Bdbg3kC1Ihz_posthog",
+        "value": "%7B%22distinct_id%22%3A%2212697396%22%2C%22%24sesid%22%3A%5B1750174613738%2C%2201977e89-2af7-722c-9ab4-15f0125315d3%22%2C1750174608119%5D%2C%22%24epp%22%3Atrue%2C%22%24initial_person_info%22%3A%7B%22r%22%3A%22https%3A%2F%2Fwww.freepik.com%2F%22%2C%22u%22%3A%22https%3A%2F%2Fwww.freepik.com%2Fpikaso%2Fai-image-generator%23from_element%3Dmainmenu%22%7D%7D",
+        "domain": ".freepik.com",
+        "hostOnly": false,
+        "path": "/",
+        "secure": true,
+        "httpOnly": false,
+        "sameSite": "lax",
+        "session": false,
+        "firstPartyDomain": "",
+        "partitionKey": null,
+        "expirationDate": 1781710613,
+        "storeId": null
+    },
+    {
+        "name": "UID",
+        "value": "44303701",
+        "domain": "www.freepik.com",
+        "hostOnly": true,
+        "path": "/",
+        "secure": false,
+        "httpOnly": false,
+        "sameSite": "no_restriction",
+        "session": true,
+        "firstPartyDomain": "",
+        "partitionKey": null,
+        "storeId": null
+    }
+]
+=== KẾT THÚC COOKIE ===
+
+💡 TIPS:
+- Phải dùng Firefox để lấy cookie (tool dùng Firefox engine)
+- Cookie quan trọng: GR_TOKEN, GR_REFRESH, GRID, UID
+- Cookie sẽ hết hạn sau 1-2 tuần, cần cập nhật lại
+- Nếu không hoạt động, thử đăng xuất/đăng nhập lại Freepik
+- Kiểm tra tài khoản Premium còn hiệu lực không 

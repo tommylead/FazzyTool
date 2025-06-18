@@ -1,0 +1,75 @@
+HƯỚNG DẪN TẠO PROMPT HÀNG LOẠT:
+
+Có 3 cách để tạo prompt:
+
+=== CÁCH 1: SỬ DỤNG AI GEMINI (TỰ ĐỘNG) ===
+Chỉ cần ghi ý tưởng đơn giản, AI sẽ tự động tạo prompt chi tiết:
+
+PROMPT_IDEA_START
+Tạo ảnh mèo dễ thương
+PROMPT_IDEA_END
+
+PROMPT_IDEA_START  
+Thiết kế poster quảng cáo sản phẩm
+PROMPT_IDEA_END
+
+PROMPT_IDEA_START
+Video animation logo công ty
+PROMPT_IDEA_END
+
+=== CÁCH 2: PROMPT CHI TIẾT (THỦ CÔNG) ===
+Ghi prompt chi tiết theo format:
+
+DETAILED_PROMPT_START
+A cute orange cat sitting on a wooden table, soft lighting, photorealistic, 4K quality
+DETAILED_PROMPT_END
+
+DETAILED_PROMPT_START
+Modern minimalist poster design for coffee shop, warm colors, elegant typography
+DETAILED_PROMPT_END
+
+=== CÁCH 3: FILE JSON (CHO NGƯỜI AM HIỂU) ===
+Format JSON chuẩn:
+
+JSON_PROMPTS_START
+[
+  {
+    "prompt": "Beautiful sunset landscape",
+    "style": "photorealistic",
+    "type": "image"
+  },
+  {
+    "prompt": "Corporate logo animation",
+    "style": "modern",
+    "type": "video"
+  },
+  {
+    "prompt": "Camera slowly zooming into mountain landscape",
+    "style": "cinematic",
+    "type": "video"
+  }
+]
+JSON_PROMPTS_END
+
+=== WORKFLOW IMAGE-TO-VIDEO ===
+🔄 Quy trình tự động:
+
+1. Tool sẽ tạo ảnh trước (type: "image")
+2. Sau đó dùng ảnh vừa tạo để làm video (type: "video")
+3. Mỗi video prompt sẽ tương ứng với 1 ảnh theo thứ tự
+
+VD: Ảnh 1 → Video 1, Ảnh 2 → Video 2, ...
+
+💡 Hoặc có thể upload ảnh sẵn vào thư mục output/ 
+   rồi chỉ viết video prompts
+
+=== HƯỚNG DẪN SỬ DỤNG ===
+1. Chọn 1 trong 3 cách trên
+2. Xóa các phần không dùng
+3. Thêm nhiều prompt tùy ý
+4. Lưu file và chạy tool
+
+Lưu ý:
+- Mỗi PROMPT_IDEA_START...END tạo 1 ảnh/video
+- Có thể mix cả 3 cách trong 1 file
+- Tool sẽ tự động detect và xử lý 

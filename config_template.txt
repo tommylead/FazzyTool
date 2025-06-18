@@ -1,0 +1,31 @@
+=== CẤU HÌNH FAZZYTOOL ===
+
+[GEMINI API]
+API_KEY=AIzaSyDvEEI2MX3hwh4mrDBRB01hjHcdAiz4a9Q
+
+[FREEPIK SETTINGS]
+WAIT_TIME=3
+MAX_RETRIES=3
+DOWNLOAD_TIMEOUT=120
+
+[OUTPUT SETTINGS]
+OUTPUT_FOLDER=output
+CREATE_SUBFOLDERS=true
+TIMESTAMP_FOLDERS=true
+
+[BATCH SETTINGS]
+MAX_CONCURRENT=2
+DELAY_BETWEEN_REQUESTS=5
+AUTO_RESTART_ON_ERROR=true
+
+[BROWSER SETTINGS]
+BROWSER=firefox
+HEADLESS=false
+WINDOW_SIZE=1920x1080
+
+=== HƯỚNG DẪN ===
+1. Thay đổi API_KEY nếu cần
+2. Chỉnh WAIT_TIME (giây chờ giữa các thao tác)
+3. MAX_CONCURRENT: số lượng tác vụ chạy đồng thời
+4. HEADLESS=true để ẩn trình duyệt (chạy nền)
+5. Lưu file và tool sẽ tự động đọc cấu hình 
