@@ -58,13 +58,13 @@ class BrowserOptimizer:
             if not self.page.is_visible(selector) or not self.page.is_enabled(selector):
                 return False
             
-            # Thử các phương pháp nhập
+            # Thử các phương pháp nhập - ƯU TIÊN PHƯƠNG PHÁP 3 (JavaScript)
             methods = [
-                lambda: self._method_click_and_fill(selector, prompt),
-                lambda: self._method_focus_and_type(selector, prompt),
-                lambda: self._method_javascript_set(selector, prompt),
-                lambda: self._method_clear_and_type(selector, prompt),
-                lambda: self._method_force_input(selector, prompt)
+                lambda: self._method_javascript_set(selector, prompt),  # Phương pháp 3 - ƯU TIÊN
+                lambda: self._method_force_input(selector, prompt),     # Phương pháp 5
+                lambda: self._method_click_and_fill(selector, prompt),  # Phương pháp 1
+                lambda: self._method_focus_and_type(selector, prompt),  # Phương pháp 2
+                lambda: self._method_clear_and_type(selector, prompt)   # Phương pháp 4
             ]
             
             for j, method in enumerate(methods, 1):
@@ -117,27 +117,100 @@ class BrowserOptimizer:
             time.sleep(0.05)
     
     def _method_javascript_set(self, selector: str, text: str):
-        """Phương pháp 3: Sử dụng JavaScript trực tiếp"""
-        escaped_text = json.dumps(text)  # Auto escape quotes
-        js_code = f"""
-        const element = document.querySelector('{selector}');
-        if (element) {{
-            element.focus();
-            element.value = {escaped_text};
-            
-            // Trigger events
-            element.dispatchEvent(new Event('input', {{ bubbles: true }}));
-            element.dispatchEvent(new Event('change', {{ bubbles: true }}));
-            element.dispatchEvent(new KeyboardEvent('keyup', {{ bubbles: true }}));
-            
-            // For contenteditable
-            if (element.contentEditable === 'true') {{
-                element.textContent = {escaped_text};
-                element.dispatchEvent(new Event('input', {{ bubbles: true }}));
-            }}
-        }}
+        """Phương pháp 3: Sử dụng JavaScript trực tiếp - CẢI TIẾN THEO YÊU CẦU USER"""
+        # Sử dụng page.evaluate với arguments để tránh escaping issues
+        js_code = """
+        (args) => {
+            try {
+                const element = document.querySelector(args.selector);
+                if (element) {
+                    // Focus và scroll element vào view
+                    element.focus();
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    // Clear content trước
+                    if (element.value !== undefined) {
+                        element.value = '';
+                    }
+                    if (element.textContent !== undefined) {
+                        element.textContent = '';
+                    }
+                    if (element.innerHTML !== undefined) {
+                        element.innerHTML = '';
+                    }
+                    
+                    // Set new value
+                    if (element.value !== undefined) {
+                        element.value = args.text;
+                    }
+                    
+                    // For contenteditable elements
+                    if (element.contentEditable === 'true') {
+                        element.textContent = args.text;
+                        element.innerHTML = args.text;
+                    }
+                    
+                    // Trigger comprehensive events để đảm bảo framework updates
+                    const events = [
+                        'focus', 'click', 'input', 'change', 'keyup', 'keydown', 
+                        'paste', 'blur', 'textInput'
+                    ];
+                    
+                    events.forEach(eventType => {
+                        try {
+                            let event;
+                            if (eventType === 'keyup' || eventType === 'keydown') {
+                                event = new KeyboardEvent(eventType, { 
+                                    bubbles: true, 
+                                    cancelable: true,
+                                    key: 'Enter'
+                                });
+                            } else {
+                                event = new Event(eventType, { 
+                                    bubbles: true, 
+                                    cancelable: true 
+                                });
+                            }
+                            element.dispatchEvent(event);
+                        } catch(e) {
+                            console.log('Event error:', e);
+                        }
+                    });
+                    
+                    // Force React/Vue/Angular framework updates
+                    try {
+                        const reactKey = Object.keys(element).find(key => 
+                            key.startsWith('__react') || key.startsWith('_vue') || key.startsWith('ng-')
+                        );
+                        if (reactKey && element[reactKey]?.memoizedProps?.onChange) {
+                            element[reactKey].memoizedProps.onChange({
+                                target: element,
+                                type: 'change'
+                            });
+                        }
+                    } catch(e) {
+                        console.log('Framework update error:', e);
+                    }
+                    
+                    // Trigger custom events for modern apps
+                    try {
+                        element.dispatchEvent(new CustomEvent('forceUpdate', { 
+                            bubbles: true,
+                            detail: { source: 'fazzy-tool' }
+                        }));
+                    } catch(e) {}
+                    
+                    return true;
+                }
+                return false;
+            } catch(e) {
+                console.log('JavaScript method error:', e);
+                return false;
+            }
+        }
         """
-        self.page.evaluate(js_code)
+        
+        return self.page.evaluate(js_code, {"selector": selector, "text": text})
     
     def _method_clear_and_type(self, selector: str, text: str):
         """Phương pháp 4: Clear rồi type chậm"""
@@ -236,14 +309,22 @@ class BrowserOptimizer:
                 f"[data-testid*='{text.lower()}']"
             ])
         
-        # Also try generic selectors
+        # NEW SPECIFIC GENERATE BUTTON SELECTORS (từ user feedback)
         selectors.extend([
+            # Selector cụ thể cho Generate button mới
+            "[data-cy='generate-button']",
+            "[data-tour='generate-button']",
+            "button[class*='bg-blue-500'][class*='hover:bg-blue-600']",
+            "button[class*='w-full'][class*='text-white']:has-text('Generate')",
+            # Generic selectors
             "button[type='submit']",
             "input[type='submit']", 
             ".btn-primary",
             ".generate-btn",
             "[data-testid*='generate']",
-            "[data-testid*='submit']"
+            "[data-testid*='submit']",
+            "button:has-text('Generate')",
+            "button:has-text('generate')"
         ])
         
         for i, selector in enumerate(selectors, 1):

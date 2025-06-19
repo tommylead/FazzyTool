@@ -57,15 +57,24 @@ def print_banner():
 
 
 def validate_environment():
-    """Kiểm tra biến môi trường cần thiết trong .env"""
+    """Kiểm tra biến môi trường cần thiết"""
     load_dotenv()
     
-    # Kiểm tra FREEPIK_COOKIE
+    # Thử đọc FREEPIK_COOKIE từ .env trước
     freepik_cookie = os.getenv("FREEPIK_COOKIE")
-    if not freepik_cookie:
-        print(f"{Colors.FAIL}Lỗi: FREEPIK_COOKIE không tìm thấy trong file .env{Colors.ENDC}")
-        print(f"{Colors.WARNING}Vui lòng sao chép cookie từ tài khoản Freepik Premium vào file .env{Colors.ENDC}")
-        return False
+    
+    # Nếu không có trong .env hoặc chỉ là placeholder, thử đọc từ cookie_template.txt
+    if not freepik_cookie or freepik_cookie == "placeholder_cookie":
+        cookies = load_cookie_from_template()
+        if cookies:
+            print(f"{Colors.GREEN}✅ Đã tìm thấy cookie trong cookie_template.txt{Colors.ENDC}")
+            return True
+        else:
+            print(f"{Colors.FAIL}Lỗi: Cookie không tìm thấy trong .env hoặc cookie_template.txt{Colors.ENDC}")
+            print(f"{Colors.WARNING}Vui lòng cập nhật cookie trong cookie_template.txt{Colors.ENDC}")
+            return False
+    else:
+        print(f"{Colors.GREEN}✅ Đã tìm thấy cookie trong .env{Colors.ENDC}")
         
     return True
 
@@ -90,10 +99,16 @@ def load_cookie_from_template():
             start_idx = content.find(start_marker)
             end_idx = content.find(end_marker)
             
+            print(f"🔍 Debug: start_marker found at {start_idx}, end_marker at {end_idx}")
+            
             if start_idx != -1 and end_idx != -1:
                 cookie_json = content[start_idx + len(start_marker):end_idx].strip()
+                print(f"🔍 Debug: Extracted cookie_json length: {len(cookie_json)}")
+                print(f"🔍 Debug: Cookie starts with '[': {cookie_json.startswith('[') if cookie_json else False}")
+                
                 if cookie_json and cookie_json.startswith('['):
                     cookies = json.loads(cookie_json)
+                    print(f"🔍 Debug: Parsed {len(cookies)} cookies from JSON")
                     
                     # Fix sameSite values để tương thích với Playwright
                     for cookie in cookies:
@@ -112,7 +127,14 @@ def load_cookie_from_template():
                         if 'expirationDate' in cookie:
                             cookie['expires'] = cookie.pop('expirationDate')
                     
+                    print(f"🔍 Debug: Returning {len(cookies)} processed cookies")
                     return cookies
+                else:
+                    print(f"🔍 Debug: Cookie JSON invalid or empty")
+            else:
+                print(f"🔍 Debug: Markers not found in template")
+        else:
+            print(f"🔍 Debug: cookie_template.txt not found")
         return []
     except Exception as e:
         print(f"⚠️ Lỗi khi load cookie: {e}")

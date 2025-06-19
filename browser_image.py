@@ -36,6 +36,11 @@ class FreepikImageGenerator:
         if not cookie_input or not cookie_input.strip():
             return []
             
+        # Kiểm tra placeholder cookie
+        if cookie_input.strip() == "placeholder_cookie":
+            print("⚠️ Cookie placeholder được phát hiện, bỏ qua...")
+            return []
+            
         cookies = []
         
         try:
@@ -611,6 +616,8 @@ class FreepikImageGenerator:
         with sync_playwright() as p:
             # Đọc cấu hình browser từ config (mặc định Chrome để tránh lỗi)
             browser_type = "chrome"
+            config_show_browser = False
+            
             try:
                 if os.path.exists('config_template.txt'):
                     with open('config_template.txt', 'r', encoding='utf-8') as f:
@@ -619,15 +626,24 @@ class FreepikImageGenerator:
                         browser_type = "firefox"
                     elif 'browser=chrome' in content:
                         browser_type = "chrome"
+                    
+                    # Đọc show_browser setting
+                    if 'show_browser=true' in content:
+                        config_show_browser = True
+                        print("⚙️ Config: show_browser=true - sử dụng visible mode")
             except:
                 pass
             
+            # Ưu tiên config setting nếu không có parameter explicit
+            final_headless = self.headless and not config_show_browser
+            
             print(f"🌐 Sử dụng browser: {browser_type}")
+            print(f"👁️ Chế độ: {'Visible' if not final_headless else 'Headless'}")
             
             # Khởi động trình duyệt tùy theo cấu hình
             if browser_type == "chrome":
                 browser = p.chromium.launch(
-                    headless=self.headless,
+                    headless=final_headless,
                     args=[
                         "--disable-blink-features=AutomationControlled",
                         "--disable-extensions",
@@ -639,7 +655,7 @@ class FreepikImageGenerator:
                 )
             else:  # firefox
                 browser = p.firefox.launch(
-                    headless=self.headless,
+                    headless=final_headless,
                     args=["--no-sandbox", "--disable-dev-shm-usage"]
                 )
             context = browser.new_context(
@@ -718,6 +734,56 @@ class FreepikImageGenerator:
                 
                 print("✅ Đã truy cập thành công vào AI Image Generator!")
                 
+                # Chờ trang load hoàn toàn trước khi tìm input
+                print("⏳ Chờ trang load hoàn toàn...")
+                time.sleep(5)  # Chờ 5 giây để đảm bảo trang load xong
+                
+                # Debug: Screenshot và URL hiện tại
+                print(f"🔍 Debug: Current URL: {page.url}")
+                page.screenshot(path=os.path.join(self.output_dir, "debug_main_tool_page.png"))
+                print(f"🔍 Debug: Screenshot saved to debug_main_tool_page.png")
+                
+                # Xử lý popup/modal có thể che mất input
+                print("🔍 Kiểm tra và xóa popup/modal...")
+                popup_selectors = [
+                    # Modal/overlay selectors
+                    ".modal", ".popup", ".overlay", ".dialog",
+                    "[role='dialog']", "[role='alertdialog']",
+                    ".cookie-banner", ".cookie-notice",
+                    ".notification", ".toast", ".alert",
+                    # Freepik specific
+                    ".onboarding", ".tutorial", ".intro",
+                    ".welcome", ".guide", ".tooltip",
+                    # Generic blocking elements
+                    "[data-testid*='modal']", "[data-testid*='popup']",
+                    "[aria-modal='true']", ".backdrop"
+                ]
+                
+                for popup_selector in popup_selectors:
+                    try:
+                        popup_elements = page.query_selector_all(popup_selector)
+                        for popup in popup_elements:
+                            if popup.is_visible():
+                                print(f"🗑️ Tìm thấy và xóa popup: {popup_selector}")
+                                popup.evaluate("element => element.remove()")
+                    except:
+                        continue
+                
+                # Thêm thời gian chờ sau khi xóa popup
+                time.sleep(2)
+                
+                # Kiểm tra xem có bị redirect không và force navigate nếu cần
+                current_url = page.url
+                target_url = "https://www.freepik.com/pikaso/ai-image-generator"
+                if target_url not in current_url:
+                    print(f"🔄 Bị redirect từ {target_url} đến {current_url}, force navigate...")
+                    try:
+                        page.goto(target_url, wait_until="domcontentloaded", timeout=15000)
+                        time.sleep(3)
+                        print(f"✅ Đã force navigate về: {page.url}")
+                    except Exception as e:
+                        print(f"⚠️ Lỗi force navigate: {e}")
+                
                 # Tìm và nhập prompt
                 print("🔍 Tìm ô nhập prompt...")
                 
@@ -740,43 +806,58 @@ class FreepikImageGenerator:
                 ]
                 
                 prompt_selector = None
-                for selector in potential_selectors:
+                for i, selector in enumerate(potential_selectors):
+                    print(f"  🔍 Thử selector {i+1}/{len(potential_selectors)}: {selector}")
                     try:
-                        page.wait_for_selector(selector, timeout=2000)
+                        # Kiểm tra element có tồn tại không
                         element = page.query_selector(selector)
-                        if element and element.is_enabled() and element.is_visible():
-                            prompt_selector = selector
-                            print(f"✓ Tìm thấy ô prompt: {selector}")
-                            
-                            # Debug thông tin về element
-                            try:
-                                element_info = page.evaluate(f"""
-                                try {{
-                                    const el = document.querySelector({json.dumps(selector)});
-                                    if (el) {{
-                                        return {{
-                                            tagName: el.tagName,
-                                            contentEditable: el.contentEditable,
-                                            placeholder: el.placeholder || '',
-                                            value: el.value || '',
-                                            textContent: el.textContent.substring(0, 50) || '',
-                                            innerHTML: el.innerHTML.substring(0, 50) || '',
-                                            visible: !el.hidden && el.offsetParent !== null,
-                                            rect: el.getBoundingClientRect(),
-                                            className: el.className
-                                        }};
-                                    }}
-                                    return null;
-                                }} catch(e) {{
-                                    return {{ error: e.toString() }};
-                                }}
-                                """)
-                                print(f"🔍 Element debug: {element_info}")
-                            except Exception as e:
-                                print(f"⚠️ Không thể debug element: {e}")
-                            
-                            break
-                    except:
+                        if element:
+                            print(f"    ✓ Element tồn tại")
+                            if element.is_visible():
+                                print(f"    ✓ Element visible")
+                                if element.is_enabled():
+                                    print(f"    ✓ Element enabled")
+                                    prompt_selector = selector
+                                    print(f"✅ Tìm thấy ô prompt: {selector}")
+                                    
+                                    # Debug thông tin về element
+                                    try:
+                                        element_info = page.evaluate("""
+                                        (selector) => {
+                                            try {
+                                                const el = document.querySelector(selector);
+                                                if (el) {
+                                                    return {
+                                                        tagName: el.tagName,
+                                                        contentEditable: el.contentEditable,
+                                                        placeholder: el.placeholder || '',
+                                                        value: el.value || '',
+                                                        textContent: el.textContent.substring(0, 50) || '',
+                                                        innerHTML: el.innerHTML.substring(0, 50) || '',
+                                                        visible: !el.hidden && el.offsetParent !== null,
+                                                        rect: el.getBoundingClientRect(),
+                                                        className: el.className
+                                                    };
+                                                }
+                                                return null;
+                                            } catch(e) {
+                                                return { error: e.toString() };
+                                            }
+                                        }
+                                        """, selector)
+                                        print(f"🔍 Element debug: {element_info}")
+                                    except Exception as e:
+                                        print(f"⚠️ Không thể debug element: {e}")
+                                    
+                                    break
+                                else:
+                                    print(f"    ❌ Element disabled")
+                            else:
+                                print(f"    ❌ Element not visible")
+                        else:
+                            print(f"    ❌ Element không tồn tại")
+                    except Exception as e:
+                        print(f"    ❌ Lỗi: {e}")
                         continue
                 
                 if not prompt_selector:
@@ -788,29 +869,47 @@ class FreepikImageGenerator:
                             const inputs = [];
                             
                             // Tìm tất cả input, textarea, contenteditable
-                            const selectors = ['input', 'textarea', '[contenteditable="true"]', '[role="textbox"]'];
+                            const allElements = [
+                                ...document.querySelectorAll('input'),
+                                ...document.querySelectorAll('textarea'),
+                                ...document.querySelectorAll('[contenteditable="true"]'),
+                                ...document.querySelectorAll('[role="textbox"]')
+                            ];
                             
-                            selectors.forEach(selector => {
-                                const elements = document.querySelectorAll(selector);
-                                elements.forEach((el, index) => {
+                            allElements.forEach((el, index) => {
+                                try {
                                     if (el.offsetParent !== null && !el.disabled && !el.hidden) { // Visible and enabled
                                         const rect = el.getBoundingClientRect();
-                                        inputs.push({
-                                            selector: selector + ':nth-child(' + (index + 1) + ')',
-                                            tagName: el.tagName,
-                                            type: el.type || '',
-                                            placeholder: el.placeholder || '',
-                                            value: (el.value || el.textContent || '').substring(0, 20),
-                                            className: el.className.substring(0, 50),
-                                            contentEditable: el.contentEditable,
-                                            width: rect.width,
-                                            height: rect.height,
-                                            x: rect.x,
-                                            y: rect.y,
-                                            visible: rect.width > 0 && rect.height > 0
-                                        });
+                                        if (rect.width > 0 && rect.height > 0) {
+                                            // Tạo selector đơn giản và an toàn
+                                            let simpleSelector = el.tagName.toLowerCase();
+                                            if (el.contentEditable === 'true') {
+                                                simpleSelector = '[contenteditable="true"]';
+                                            } else if (el.getAttribute('role') === 'textbox') {
+                                                simpleSelector = '[role="textbox"]';
+                                            } else if (el.type) {
+                                                simpleSelector += '[type="' + el.type + '"]';
+                                            }
+                                            
+                                            inputs.push({
+                                                selector: simpleSelector,
+                                                tagName: el.tagName,
+                                                type: el.type || '',
+                                                placeholder: el.placeholder || '',
+                                                value: (el.value || el.textContent || '').substring(0, 20),
+                                                className: el.className.substring(0, 50),
+                                                contentEditable: el.contentEditable,
+                                                width: rect.width,
+                                                height: rect.height,
+                                                x: rect.x,
+                                                y: rect.y,
+                                                visible: true
+                                            });
+                                        }
                                     }
-                                });
+                                } catch(e) {
+                                    // Skip element nếu có lỗi
+                                }
                             });
                             
                             return inputs;
@@ -942,47 +1041,50 @@ class FreepikImageGenerator:
                     time.sleep(0.2)
                 
                 def method_5():
-                    """Method 5: Force value với multiple events - properly escaped"""
-                    escaped_prompt = json.dumps(prompt)  # JSON escape cho prompt
-                    escaped_selector = json.dumps(prompt_selector)  # JSON escape cho selector
-                    js_code = f"""
-                    try {{
-                        const element = document.querySelector({escaped_selector});
-                        if (element) {{
-                            // Clear first
-                            if (element.value !== undefined) {{
-                                element.value = '';
-                            }}
-                            if (element.textContent !== undefined) {{
-                                element.textContent = '';
-                            }}
-                            
-                            // Set value
-                            if (element.value !== undefined) {{
-                                element.value = {escaped_prompt};
-                            }}
-                            
-                            // For contenteditable
-                            if (element.contentEditable === 'true') {{
-                                element.textContent = {escaped_prompt};
-                                element.innerHTML = {escaped_prompt};
-                            }}
-                            
-                            // Trigger events
-                            const events = ['focus', 'input', 'change', 'keyup', 'blur'];
-                            events.forEach(eventType => {{
-                                const event = new Event(eventType, {{ bubbles: true }});
-                                element.dispatchEvent(event);
-                            }});
-                        }}
-                    }} catch(e) {{
-                        console.log('Method 5 error:', e);
-                    }}
-                    """
-                    page.evaluate(js_code)
+                    """Method 5: Force value với multiple events - safely escaped"""
+                    try:
+                        # Sử dụng page.evaluate với arguments thay vì string formatting
+                        page.evaluate("""
+                        (args) => {
+                            try {
+                                const element = document.querySelector(args.selector);
+                                if (element) {
+                                    // Clear first
+                                    if (element.value !== undefined) {
+                                        element.value = '';
+                                    }
+                                    if (element.textContent !== undefined) {
+                                        element.textContent = '';
+                                    }
+                                    
+                                    // Set value
+                                    if (element.value !== undefined) {
+                                        element.value = args.prompt;
+                                    }
+                                    
+                                    // For contenteditable
+                                    if (element.contentEditable === 'true') {
+                                        element.textContent = args.prompt;
+                                        element.innerHTML = args.prompt;
+                                    }
+                                    
+                                    // Trigger events
+                                    const events = ['focus', 'input', 'change', 'keyup', 'blur'];
+                                    events.forEach(eventType => {
+                                        const event = new Event(eventType, { bubbles: true });
+                                        element.dispatchEvent(event);
+                                    });
+                                }
+                            } catch(e) {
+                                console.log('Method 5 error:', e);
+                            }
+                        }
+                        """, {"selector": prompt_selector, "prompt": prompt})
+                    except Exception as e:
+                        print(f"Method 5 JavaScript error: {e}")
                 
-                # Ưu tiên methods không dùng JavaScript 
-                methods = [method_1, method_2, method_4, method_3, method_5]
+                # ƯU TIÊN METHOD 3 (JavaScript) theo yêu cầu user
+                methods = [method_3, method_5, method_1, method_2, method_4]
                 
                 for i, method in enumerate(methods):
                     try:
@@ -1006,22 +1108,20 @@ class FreepikImageGenerator:
                         # Cách 2: JavaScript get content (cho contenteditable)
                         if not current_value:
                             try:
-                                escaped_selector = json.dumps(prompt_selector)
-                                js_code = f"""
-                                (() => {{
-                                    try {{
-                                        const el = document.querySelector({escaped_selector});
-                                        if (el) {{
+                                current_value = page.evaluate("""
+                                (selector) => {
+                                    try {
+                                        const el = document.querySelector(selector);
+                                        if (el) {
                                             const content = el.textContent || el.innerText || el.value || '';
                                             return content.trim();
-                                        }}
+                                        }
                                         return '';
-                                    }} catch(e) {{
+                                    } catch(e) {
                                         return '';
-                                    }}
-                                }})()
-                                """
-                                current_value = page.evaluate(js_code)
+                                    }
+                                }
+                                """, prompt_selector)
                                 if current_value:
                                     print(f"  📝 Phát hiện qua JavaScript: '{current_value[:30]}...'")
                             except Exception as e:
@@ -1068,296 +1168,24 @@ class FreepikImageGenerator:
                 
                 print(f"✅ Đã nhập prompt thành công")
                 
-                # Chọn số lượng ảnh nếu có option
-                print(f"⚙️ Đang cài đặt sinh {num_images} ảnh...")
+                # TRỰC TIẾP TÌM VÀ CLICK NÚT GENERATE (theo yêu cầu user)
+                print("🎯 Nhấn trực tiếp vào nút Generate...")
                 
-                # Tìm selector cho số lượng ảnh
-                quantity_selectors = [
-                    f"button:has-text('{num_images}')",
-                    f"[data-value='{num_images}']",
-                    f"option[value='{num_images}']",
-                    ".quantity-selector",
-                    "[data-testid*='quantity']",
-                    "[aria-label*='number']"
-                ]
+                # Selector đúng từ user (không sử dụng gì khác)
+                selector = "button[data-cy='generate-button'][data-tour='generate-button']"
                 
-                quantity_set = False
-                for selector in quantity_selectors:
-                    try:
-                        element = page.query_selector(selector)
-                        if element and element.is_visible():
-                            element.click()
-                            quantity_set = True
-                            print(f"✓ Đã chọn sinh {num_images} ảnh")
-                            break
-                    except:
-                        continue
-                
-                if not quantity_set:
-                    print(f"⚠️ Không tìm thấy option số lượng, sử dụng mặc định")
-                
-                # Generate ảnh với logic anti-missclick
-                print("🚀 Đang bắt đầu sinh ảnh...")
-                
-                # Loại bỏ overlay và bảo vệ chống click nhầm
                 try:
-                    print("🔒 Loại bỏ overlay và khóa elements gây nhầm lẫn...")
-                    
-                    anti_missclick_js = """
-                    // Loại bỏ tất cả overlay/modal/popup che nút Generate
-                    const removeOverlays = () => {
-                        let removedCount = 0;
-                        
-                        // 1. Loại bỏ các overlay selectors phổ biến
-                        const overlaySelectors = [
-                            '#headlessui-portal-root',  // Headless UI portal (từ log lỗi)
-                            '[data-headlessui-portal]',
-                            '.modal-overlay', '.overlay', '.backdrop',
-                            '[class*="modal"][class*="overlay"]',
-                            '[class*="popup"][class*="overlay"]',
-                            '[style*="position: fixed"]',
-                            '[style*="z-index: 9"]',  // High z-index overlays
-                            '.headlessui-portal-root'
-                        ];
-                        
-                        overlaySelectors.forEach(selector => {
-                            try {
-                                const elements = document.querySelectorAll(selector);
-                                elements.forEach(el => {
-                                    // Chỉ remove nếu có pointer-events và che nút Generate
-                                    const style = window.getComputedStyle(el);
-                                    if (style.position === 'fixed' || 
-                                        style.position === 'absolute' ||
-                                        parseInt(style.zIndex) > 100) {
-                                        el.style.display = 'none';
-                                        el.style.pointerEvents = 'none';
-                                        removedCount++;
-                                    }
-                                });
-                            } catch(e) {}
-                        });
-                        
-                        // 2. Tìm và remove các img che nút Generate (từ log lỗi)
-                        const blockingImages = document.querySelectorAll('img[data-v-dd0eb7b7]');
-                        blockingImages.forEach(img => {
-                            const rect = img.getBoundingClientRect();
-                            // Nếu img có kích thước lớn và có thể che nút Generate
-                            if (rect.width > 100 && rect.height > 100) {
-                                img.style.pointerEvents = 'none';
-                                img.style.zIndex = '-1';
-                                removedCount++;
-                            }
-                        });
-                        
-                        console.log('🗑️ Đã loại bỏ', removedCount, 'overlays');
-                        return removedCount;
-                    };
-                    
-                    const protectFromMissclicks = () => {
-                        // Ẩn/khóa tất cả template images
-                        const dangerousSelectors = [
-                            '[class*="template"]:not([class*="input"])', 
-                            '[class*="gallery"]', 
-                            '[class*="example"]',
-                            'img[src*="template"]', 
-                            'img[src*="example"]', 
-                            '[data-testid*="template"]',
-                            '.ai-image-templates', 
-                            '.inspiration-gallery', 
-                            '[class*="inspiration"]',
-                            '[class*="sample"]',
-                            '[class*="preset"]',
-                            'img[alt*="Example"]',
-                            'img[alt*="Template"]'
-                        ];
-                        
-                        let protectedCount = 0;
-                        dangerousSelectors.forEach(selector => {
-                            try {
-                                const elements = document.querySelectorAll(selector);
-                                elements.forEach(el => {
-                                    if (el && !el.closest('form') && !el.closest('[contenteditable]')) {
-                                        el.style.pointerEvents = 'none';
-                                        el.style.opacity = '0.2';
-                                        el.style.filter = 'grayscale(100%)';
-                                        protectedCount++;
-                                    }
-                                });
-                            } catch(e) {}
-                        });
-                        
-                        // Highlight nút Generate
-                        const generateButtons = document.querySelectorAll('button');
-                        generateButtons.forEach(btn => {
-                            const text = btn.textContent.toLowerCase();
-                            if (text.includes('generate') && 
-                                btn.offsetLeft < 500 && 
-                                !btn.disabled) {
-                                btn.style.boxShadow = '0 0 10px #3b82f6';
-                                btn.style.border = '2px solid #3b82f6';
-                                btn.style.zIndex = '9999';  // Đảm bảo ở trên cùng
-                                btn.setAttribute('data-generate-button', 'true');
-                            }
-                        });
-                        
-                        console.log('🔒 Đã bảo vệ', protectedCount, 'elements');
-                        return protectedCount;
-                    };
-                    
-                    const overlaysRemoved = removeOverlays();
-                    const elementsProtected = protectFromMissclicks();
-                    
-                    return { overlaysRemoved, elementsProtected };
-                    """
-                    
-                    result = page.evaluate(anti_missclick_js)
-                    print(f"✅ Đã loại bỏ {result.get('overlaysRemoved', 0)} overlays và bảo vệ {result.get('elementsProtected', 0)} elements")
-                    
+                    generate_button = page.query_selector(selector)
+                    if generate_button and generate_button.is_visible():
+                        generate_button.click()
+                        print("✅ Đã click nút Generate")
+                    else:
+                        # Fallback đơn giản
+                        page.click("button:has-text('Generate')")
+                        print("✅ Đã click nút Generate (fallback)")
                 except Exception as e:
-                    print(f"⚠️ Lỗi khi loại bỏ overlay: {e}")
-                    pass
-                
-                # Scroll để thấy nút Generate ở sidebar trái
-                page.evaluate("document.querySelector('.generate-container, form, [data-cy=\"generate-button\"]')?.scrollIntoView({behavior: 'smooth', block: 'center'})")
-                time.sleep(2)
-                
-                # Tìm nút Generate với độ chính xác cao nhất
-                print("🎯 Tìm nút Generate với độ chính xác cao...")
-                
-                # Các selector cực kỳ cụ thể để tránh nhầm lẫn
-                ultra_specific_selectors = [
-                    "button[data-generate-button='true']:not([disabled])",  # Button được đánh dấu bởi script bảo vệ
-                    "button[data-cy='generate-button']:not([disabled])",  # Data attribute chính xác
-                    "button[data-tour='generate-button']:not([disabled])",  # Data tour attribute
-                    "form button:has-text('Generate'):not([disabled])",  # Button trong form chính
-                    "button.bg-blue-500:has-text('Generate'):not([disabled]):not([aria-hidden='true'])",  # Kết hợp nhiều điều kiện
-                ]
-                
-                generate_button = None
-                selected_selector = None
-                
-                for selector in ultra_specific_selectors:
-                    try:
-                        print(f"🔍 Thử selector: {selector}")
-                        
-                        # Tìm tất cả elements với selector này
-                        elements = page.query_selector_all(selector)
-                        
-                        if elements:
-                            print(f"   Tìm thấy {len(elements)} elements")
-                            
-                            # Kiểm tra từng element để tìm đúng nút Generate
-                            for i, element in enumerate(elements):
-                                try:
-                                    if element.is_visible() and element.is_enabled():
-                                        # Kiểm tra text content
-                                        text = element.text_content().strip().lower()
-                                        if 'generate' in text and len(text) < 20:  # Tránh text dài
-                                            # Kiểm tra vị trí - nút Generate thường ở sidebar trái
-                                            bbox = element.bounding_box()
-                                            if bbox and bbox['x'] < 400:  # Sidebar trái thường < 400px
-                                                generate_button = element
-                                                selected_selector = f"{selector} (element {i+1})"
-                                                print(f"   ✅ Tìm thấy nút Generate phù hợp tại vị trí x={bbox['x']}")
-                                                break
-                                except:
-                                    continue
-                        
-                        if generate_button:
-                            break
-                            
-                    except Exception as e:
-                        print(f"   ⚠️ Lỗi với selector: {e}")
-                        continue
-                
-                if not generate_button:
-                    # Fallback: tìm với selector đơn giản nhất
-                    print("🔄 Fallback: tìm với selector cơ bản...")
-                    try:
-                        generate_button = page.query_selector("button:has-text('Generate')")
-                        selected_selector = "button:has-text('Generate') (fallback)"
-                    except:
-                        pass
-                
-                # Click nút Generate với double-check
-                generated = False
-                if generate_button:
-                    try:
-                        print(f"🎯 Chuẩn bị click: {selected_selector}")
-                        
-                        # Double-check trước khi click
-                        if generate_button.is_visible() and generate_button.is_enabled():
-                            # Scroll element vào giữa màn hình
-                            generate_button.scroll_into_view_if_needed()
-                            time.sleep(1)
-                            
-                            # Highlight element để debug (tùy chọn)
-                            try:
-                                page.evaluate("arguments[0].style.border = '3px solid red'", generate_button)
-                                time.sleep(0.5)
-                            except:
-                                pass
-                            
-                            # Click với timeout ngắn và force để bypass overlay
-                            try:
-                                generate_button.click(timeout=5000, force=True)
-                                print(f"✅ Đã click nút Generate: {selected_selector}")
-                                generated = True
-                            except Exception as click_error:
-                                print(f"⚠️ Click thường thất bại: {click_error}")
-                                # Thử click bằng JavaScript
-                                try:
-                                    page.evaluate("arguments[0].click()", generate_button)
-                                    print(f"✅ Đã click nút Generate bằng JavaScript: {selected_selector}")
-                                    generated = True
-                                except Exception as js_error:
-                                    print(f"❌ JavaScript click cũng thất bại: {js_error}")
-                            
-                        else:
-                            print("❌ Generate button không thể click (invisible hoặc disabled)")
-                            
-                    except Exception as e:
-                        print(f"❌ Lỗi khi click Generate button: {e}")
-                else:
-                    print("❌ Không tìm thấy nút Generate")
-                
-                if not generated:
-                    # Thử method cuối cùng: click theo tọa độ cố định
-                    print("🔧 Thử method cuối: click theo tọa độ...")
-                    try:
-                        # Scroll về sidebar trái
-                        page.evaluate("window.scrollTo(0, 0)")
-                        time.sleep(1)
-                        
-                        # Tìm element có text "Generate" và click theo tọa độ
-                        js_click = """
-                        const buttons = document.querySelectorAll('button');
-                        for (let btn of buttons) {
-                            if (btn.textContent.toLowerCase().includes('generate') && 
-                                btn.offsetLeft < 400 && // Sidebar trái
-                                btn.offsetWidth > 50 && // Button đủ lớn
-                                !btn.disabled &&
-                                btn.offsetParent !== null) { // Visible
-                                
-                                btn.style.border = '5px solid red';
-                                btn.click();
-                                console.log('Clicked Generate button at:', btn.offsetLeft, btn.offsetTop);
-                                return true;
-                            }
-                        }
-                        return false;
-                        """
-                        
-                        success = page.evaluate(js_click)
-                        if success:
-                            print("✅ Đã click Generate bằng JavaScript")
-                            generated = True
-                        
-                    except Exception as e:
-                        print(f"⚠️ JavaScript click thất bại: {e}")
-                
-                if not generated:
-                    raise Exception("Không tìm thấy nút Generate sau tất cả các method")
+                    print(f"❌ Lỗi click Generate: {e}")
+                    raise Exception("Không thể click nút Generate")
                 
                 # Chờ ảnh được sinh ra
                 print("⏳ Đang chờ ảnh được sinh ra...")

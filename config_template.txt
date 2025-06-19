@@ -46,3 +46,35 @@ auto_cleanup=true            # Tự động dọn dẹp file tạm
 # - Lỗi browser: Đổi từ firefox sang chrome hoặc ngược lại  
 # - Lỗi quá tải: Giảm max_concurrent, tăng delay_between_requests
 # - Lỗi download: Kiểm tra quyền ghi trong output_folder 
+
+# ==============================================
+# FREEPIK TOOL CONFIGURATION
+# ==============================================
+
+# Trình duyệt sử dụng (chrome hoặc firefox)
+browser=chrome
+
+# Chế độ hiển thị browser (true/false)
+# true = hiển thị browser (chậm hơn nhưng ổn định hơn)
+# false = headless mode (nhanh hơn nhưng có thể gặp lỗi với một số trang)
+show_browser=false
+
+# Timeout cho các thao tác (giây)
+default_timeout=30
+image_generation_timeout=120
+
+# Số lượng ảnh mặc định
+default_num_images=4
+default_download_count=4
+
+# Thư mục output
+output_directory=output
+
+# ==============================================
+# TROUBLESHOOTING
+# ==============================================
+# Nếu gặp lỗi "Không tìm thấy ô nhập prompt":
+# 1. Thay đổi show_browser=true
+# 2. Hoặc thử browser=firefox
+# 3. Kiểm tra cookie trong cookie_template.txt
+# ============================================== 
