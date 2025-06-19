@@ -1,31 +1,48 @@
-=== CẤU HÌNH FAZZYTOOL ===
+# FAZZYTOOL Configuration File - Phiên bản tối ưu
+# Cập nhật: December 2024
 
-[GEMINI API]
-API_KEY=AIzaSyDvEEI2MX3hwh4mrDBRB01hjHcdAiz4a9Q
+=== GEMINI AI SETTINGS ===
+# API key để sử dụng Gemini AI (lấy từ https://makersuite.google.com/app/apikey)
+api_key=AIzaSyCsqM2ReH4biXvNH3xPmoqUOW2u9kGg5zw
 
-[FREEPIK SETTINGS]
-WAIT_TIME=3
-MAX_RETRIES=3
-DOWNLOAD_TIMEOUT=120
+=== IMAGE GENERATION SETTINGS ===
+# Cấu hình mặc định cho sinh ảnh
+default_num_images=4          # Số lượng ảnh AI sẽ sinh ra (1-10)
+default_download_count=2      # Số lượng ảnh sẽ tải về (1 đến num_images)
+auto_filename_prefix=true     # Tự động tạo tiền tố tên file theo prompt ID
 
-[OUTPUT SETTINGS]
-OUTPUT_FOLDER=output
-CREATE_SUBFOLDERS=true
-TIMESTAMP_FOLDERS=true
+=== BATCH PROCESSING SETTINGS ===
+# Cấu hình xử lý hàng loạt
+wait_time=3                   # Thời gian chờ element xuất hiện (giây)
+max_retries=3                 # Số lần thử lại khi gặp lỗi
+max_concurrent=2              # Số lượng task xử lý đồng thời
+delay_between_requests=5      # Thời gian delay giữa các request (giây)
 
-[BATCH SETTINGS]
-MAX_CONCURRENT=2
-DELAY_BETWEEN_REQUESTS=5
-AUTO_RESTART_ON_ERROR=true
+=== BROWSER SETTINGS ===
+# Cấu hình trình duyệt
+browser=chrome               # Loại browser: chrome hoặc firefox (KHUYẾN NGHỊ: chrome)
+headless=false               # true = chạy ẩn browser, false = hiển thị UI
+output_folder=output          # Thư mục lưu file kết quả
 
-[BROWSER SETTINGS]
-BROWSER=firefox
-HEADLESS=false
-WINDOW_SIZE=1920x1080
+=== ADVANCED SETTINGS ===
+# Cấu hình nâng cao (không nên thay đổi trừ khi hiểu rõ)
+request_timeout=30            # Timeout cho các request (giây)
+screenshot_quality=90         # Chất lượng screenshot (1-100)
+debug_mode=false             # Bật debug mode để troubleshoot
+auto_cleanup=true            # Tự động dọn dẹp file tạm
 
-=== HƯỚNG DẪN ===
-1. Thay đổi API_KEY nếu cần
-2. Chỉnh WAIT_TIME (giây chờ giữa các thao tác)
-3. MAX_CONCURRENT: số lượng tác vụ chạy đồng thời
-4. HEADLESS=true để ẩn trình duyệt (chạy nền)
-5. Lưu file và tool sẽ tự động đọc cấu hình 
+=== HƯỚNG DẪN SỬ DỤNG ===
+# 1. Thay đổi api_key nếu cần (khi hết quota hoặc muốn dùng key khác)
+# 2. Điều chỉnh default_num_images và default_download_count theo nhu cầu:
+#    - Ít ảnh (1-2): Tiết kiệm credits, nhanh hơn
+#    - Nhiều ảnh (4-8): Có nhiều lựa chọn, tốn credits hơn
+# 3. Tăng max_concurrent nếu máy mạnh và muốn xử lý nhanh hơn
+# 4. Giảm delay_between_requests nếu mạng ổn định
+# 5. Bật headless=true cho batch lớn để tiết kiệm tài nguyên
+
+=== TROUBLESHOOTING ===
+# Nếu gặp lỗi:
+# - Lỗi timeout: Tăng wait_time và request_timeout
+# - Lỗi browser: Đổi từ firefox sang chrome hoặc ngược lại  
+# - Lỗi quá tải: Giảm max_concurrent, tăng delay_between_requests
+# - Lỗi download: Kiểm tra quyền ghi trong output_folder 

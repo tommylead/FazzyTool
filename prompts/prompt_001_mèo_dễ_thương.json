@@ -1,0 +1,10 @@
+{
+  "image_prompt": "An adorable fluffy kitten, wide eyes, playful expression, soft pastel colors, shallow depth of field, macro photography style, highly detailed, 8k resolution, award-winning photography",
+  "video_prompt": "A cute kitten playing with a ball of yarn, slow-motion shots, close-ups of its paws and face, playful background music, smooth transitions, dynamic camera movements, warm lighting, pastel color palette, 8k resolution, cinematic style,  video duration 10 seconds, aspect ratio 16:9",
+  "video_duration": "10s",
+  "video_ratio": "16:9",
+  "topic": "mèo dễ thương",
+  "prompt_id": "prompt_001",
+  "generated_at": "2025-06-19T00:10:38.350399",
+  "generated_by": "gemini-1.5-flash"
+}

@@ -28,6 +28,21 @@
    📦 Xử lý hàng loạt:
    py main.py batch
 
+🆕 3. COMMANDS RIÊNG BIỆT (MỚI):
+
+   🎨 CHỈ TẠO ẢNH:
+   py main.py image --topic "mèo dễ thương"
+   py main.py image --file sample_prompts.json
+   py main.py image --prompt "cute cat sitting by window"
+
+   🎬 CHỈ TẠO VIDEO:
+   py main.py video --topic "chó corgi chạy"
+   py main.py video --image "output/my_cat.png"
+   py main.py video --prompt "beautiful sunset" --duration 10s
+
+   🎬🎨 TẠO VIDEO TỪ NHIỀU ẢNH:
+   py main.py images-to-videos --duration 10s --ratio 16:9
+
 ================================================================================
                             🍪 THÔNG TIN COOKIE
 ================================================================================

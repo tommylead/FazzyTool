@@ -1,0 +1,10 @@
+{
+  "image_prompt": "An ultra-cute puppy, golden retriever, big round eyes, fluffy fur, playful expression, lying on a soft blanket, sunlight streaming through window, shallow depth of field, bokeh background, vibrant colors, photorealistic style, 8k resolution, award-winning photography",
+  "video_prompt": "A cute golden retriever puppy playing in a sunlit park, rolling on the grass, chasing butterflies, close-up shots, slow-motion moments, playful atmosphere, vibrant colors, smooth transitions, dynamic camera movement, shallow depth of field, bokeh background, 8k resolution, cinematic style, heartwarming music",
+  "video_duration": "10s",
+  "video_ratio": "16:9",
+  "topic": "chó con dễ thương",
+  "prompt_id": "prompt_001",
+  "generated_at": "2025-06-19T10:19:46.444621",
+  "generated_by": "gemini-1.5-flash"
+}

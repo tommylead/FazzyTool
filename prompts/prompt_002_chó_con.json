@@ -1,0 +1,10 @@
+{
+  "image_prompt": "A photorealistic image of an adorable golden retriever puppy, lying down in a sunbeam, eyes closed, soft fur, fluffy tail, shallow depth of field, warm lighting, cinematic lighting, 8k resolution, highly detailed",
+  "video_prompt": "A cute golden retriever puppy playing in a field of flowers, slow motion, close-up shots, playful movements, shallow depth of field, warm lighting, cinematic lighting, smooth transitions between shots, dynamic camera movements, dolly zoom effect, 8k resolution, highly detailed, whimsical music",
+  "video_duration": "10s",
+  "video_ratio": "16:9",
+  "topic": "chó con",
+  "prompt_id": "prompt_002",
+  "generated_at": "2025-06-19T00:10:39.747587",
+  "generated_by": "gemini-1.5-flash"
+}

@@ -1,0 +1,10 @@
+{
+  "image_prompt": "A cute cat sleeping peacefully on a sunny window sill, detailed fur, soft lighting, warm colors, shallow depth of field, photorealistic style, 8k resolution",
+  "video_prompt": "A fluffy cat sleeping soundly, curled up in a sunbeam, slow zoom in, soft focus, warm color palette, gentle transition to close-up, peaceful atmosphere, 8k resolution, realistic fur",
+  "video_duration": "5s",
+  "video_ratio": "1:1",
+  "topic": "mèo ngủ",
+  "prompt_id": "prompt_002",
+  "generated_at": "2025-06-19T10:19:47.645864",
+  "generated_by": "gemini-1.5-flash"
+}

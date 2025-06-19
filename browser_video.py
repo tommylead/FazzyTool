@@ -5,6 +5,7 @@ Module xử lý việc điều khiển trình duyệt tự động để sinh vi
 import os
 import time
 import json
+import shutil
 from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime
@@ -25,10 +26,172 @@ class FreepikVideoGenerator:
             output_dir: Thư mục lưu video đầu ra
         """
         self.headless = headless
-        self.output_dir = output_dir
+        self.base_output_dir = output_dir
+        self.current_session_dir = None
         
-        # Tạo thư mục output nếu chưa tồn tại
-        os.makedirs(self.output_dir, exist_ok=True)
+        # Tạo thư mục output chính nếu chưa tồn tại
+        os.makedirs(self.base_output_dir, exist_ok=True)
+    
+    def _create_session_folder(self, session_type: str = "video") -> str:
+        """
+        Tạo folder cho session hiện tại với timestamp
+        
+        Args:
+            session_type: Loại session (video, image_to_video, etc.)
+            
+        Returns:
+            str: Đường dẫn tới session folder
+        """
+        # Tạo timestamp cho session
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        session_name = f"{session_type}_{timestamp}"
+        
+        # Tạo đường dẫn session folder
+        session_dir = os.path.join(self.base_output_dir, session_name)
+        os.makedirs(session_dir, exist_ok=True)
+        
+        # Lưu session hiện tại
+        self.current_session_dir = session_dir
+        
+        print(f"📁 Tạo session folder: {session_name}")
+        return session_dir
+    
+    def _save_session_metadata(self, metadata: dict):
+        """
+        Lưu metadata của session vào file JSON
+        
+        Args:
+            metadata: Dictionary chứa thông tin session
+        """
+        if not self.current_session_dir:
+            return
+            
+        metadata_path = os.path.join(self.current_session_dir, "session_info.json")
+        metadata["session_created"] = datetime.now().isoformat()
+        metadata["session_folder"] = os.path.basename(self.current_session_dir)
+        
+        with open(metadata_path, 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, indent=2, ensure_ascii=False)
+        
+        print(f"📋 Lưu session metadata: session_info.json")
+    
+    def _copy_input_file(self, source_path: str, new_name: str = None) -> str:
+        """
+        Copy file input vào session folder
+        
+        Args:
+            source_path: Đường dẫn file gốc
+            new_name: Tên mới cho file (optional)
+            
+        Returns:
+            str: Đường dẫn file đã copy
+        """
+        if not self.current_session_dir or not os.path.exists(source_path):
+            return source_path
+        
+        source_file = Path(source_path)
+        if new_name:
+            dest_name = new_name
+        else:
+            dest_name = f"input_{source_file.name}"
+        
+        dest_path = os.path.join(self.current_session_dir, dest_name)
+        shutil.copy2(source_path, dest_path)
+        
+        print(f"📎 Copy input file: {dest_name}")
+        return dest_path
+    
+    def get_session_summary(self) -> dict:
+        """
+        Lấy thống kê các session đã tạo
+        
+        Returns:
+            dict: Thống kê sessions
+        """
+        if not os.path.exists(self.base_output_dir):
+            return {"total_sessions": 0, "sessions": []}
+        
+        sessions = []
+        for item in os.listdir(self.base_output_dir):
+            item_path = os.path.join(self.base_output_dir, item)
+            if os.path.isdir(item_path) and ("video_" in item or "image_to_video_" in item or "text_to_video_" in item):
+                session_info = {"folder_name": item, "path": item_path}
+                
+                # Đọc metadata nếu có
+                metadata_path = os.path.join(item_path, "session_info.json")
+                if os.path.exists(metadata_path):
+                    try:
+                        with open(metadata_path, 'r', encoding='utf-8') as f:
+                            metadata = json.load(f)
+                        session_info.update(metadata)
+                    except:
+                        pass
+                
+                # Thêm thông tin files
+                files = os.listdir(item_path)
+                session_info["files"] = files
+                session_info["file_count"] = len(files)
+                
+                sessions.append(session_info)
+        
+        # Sắp xếp theo thời gian tạo (mới nhất trước)
+        sessions.sort(key=lambda x: x.get("session_created", ""), reverse=True)
+        
+        return {
+            "total_sessions": len(sessions),
+            "sessions": sessions[:10],  # Chỉ lấy 10 sessions gần nhất
+            "base_output_dir": self.base_output_dir
+        }
+    
+    def print_session_summary(self):
+        """In ra thống kê sessions đã tạo"""
+        summary = self.get_session_summary()
+        
+        print(f"\n📊 THỐNG KÊ VIDEO SESSIONS")
+        print(f"📁 Thư mục gốc: {summary['base_output_dir']}")
+        print(f"🎬 Tổng sessions: {summary['total_sessions']}")
+        
+        if summary['sessions']:
+            print(f"\n📋 {min(10, len(summary['sessions']))} Sessions gần nhất:")
+            for i, session in enumerate(summary['sessions'], 1):
+                status = session.get('status', 'unknown')
+                session_type = session.get('type', 'unknown')
+                created = session.get('session_created', 'unknown')
+                
+                status_icon = "✅" if status == "completed" else "❌" if status == "error" else "⚠️"
+                
+                print(f"  {i}. {status_icon} {session['folder_name']}")
+                print(f"     📅 {created[:19] if created != 'unknown' else 'Unknown'}")
+                print(f"     🎭 Type: {session_type}")
+                print(f"     📁 Files: {session.get('file_count', 0)}")
+                if 'prompt' in session:
+                    prompt_short = session['prompt'][:50] + "..." if len(session['prompt']) > 50 else session['prompt']
+                    print(f"     💬 Prompt: {prompt_short}")
+        else:
+            print("Chưa có session nào.")
+    
+    def _download_video_to_session(self, page = None) -> Optional[str]:
+        """
+        Download video vào session folder hiện tại
+        
+        Args:
+            page: Playwright page object (sẽ được lấy từ context nếu không có)
+            
+        Returns:
+            str: Đường dẫn file video đã download
+        """
+        if not self.current_session_dir:
+            print("❌ Không có session folder để lưu video")
+            return None
+        
+        # Tạo tên file video với timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"video_output_{timestamp}.mp4"
+        filepath = os.path.join(self.current_session_dir, filename)
+        
+        # Note: Method này sẽ được gọi từ context có page
+        # Logic download sẽ được thêm vào trong context generate_video_from_image
+        return filepath
     
     def parse_cookies(self, cookie_input: str):
         """
@@ -133,6 +296,22 @@ class FreepikVideoGenerator:
         
         if not os.path.exists(image_path):
             raise FileNotFoundError(f"Không tìm thấy file ảnh: {image_path}")
+        
+        # Tạo session folder cho lần generate này
+        session_dir = self._create_session_folder("image_to_video")
+        
+        # Copy ảnh input vào session folder
+        input_image_path = self._copy_input_file(image_path, "input_image" + Path(image_path).suffix)
+        
+        # Chuẩn bị metadata
+        session_metadata = {
+            "type": "image_to_video",
+            "prompt": prompt,
+            "duration": duration,
+            "ratio": ratio,
+            "input_image": os.path.basename(input_image_path),
+            "original_image_path": image_path
+        }
         
         with sync_playwright() as p:
             # Khởi động trình duyệt
@@ -405,12 +584,22 @@ class FreepikVideoGenerator:
                 
                 # Tải video về
                 print("💾 Đang tải video...")
-                video_path = self._download_video()
+                video_path = self._download_video_to_session()
                 
                 if video_path:
+                    # Lưu metadata cuối cùng
+                    session_metadata["output_video"] = os.path.basename(video_path)
+                    session_metadata["status"] = "completed"
+                    self._save_session_metadata(session_metadata)
+                    
                     print(f"✅ Đã tải video thành công: {video_path}")
+                    print(f"📁 Session folder: {self.current_session_dir}")
                     return video_path
                 else:
+                    # Lưu metadata thất bại
+                    session_metadata["status"] = "failed"
+                    session_metadata["error"] = "Download failed"
+                    self._save_session_metadata(session_metadata)
                     raise Exception("Không thể tải video")
                     
             except Exception as e:
@@ -433,6 +622,17 @@ class FreepikVideoGenerator:
             str: Đường dẫn file video đã tải về
         """
         print(f"🎬 Bắt đầu sinh video với prompt: {prompt}")
+        
+        # Tạo session folder cho lần generate này
+        session_dir = self._create_session_folder("text_to_video")
+        
+        # Chuẩn bị metadata
+        session_metadata = {
+            "type": "text_to_video",
+            "prompt": prompt,
+            "duration": duration,
+            "ratio": ratio
+        }
         
         with sync_playwright() as p:
             # Khởi động trình duyệt
@@ -701,11 +901,13 @@ class FreepikVideoGenerator:
                 if not result_found:
                     raise Exception("Timeout: Video không được sinh ra sau 180 giây")
                 
-                # Tải video về
+                # Tải video về session folder
                 print("💾 Đang tải video về...")
-                timestamp = int(time.time())
-                filename = f"freepik_video_{timestamp}.mp4"
-                filepath = os.path.join(self.output_dir, filename)
+                
+                # Tạo tên file video với timestamp
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"video_output_{timestamp}.mp4"
+                filepath = os.path.join(self.current_session_dir, filename)
                 
                 # Tìm link download
                 download_selectors = [
@@ -727,12 +929,27 @@ class FreepikVideoGenerator:
                         continue
                 
                 if downloaded:
+                    # Lưu metadata thành công
+                    session_metadata["output_video"] = os.path.basename(filepath)
+                    session_metadata["status"] = "completed"
+                    self._save_session_metadata(session_metadata)
+                    
                     print(f"✅ Đã lưu video: {filepath}")
+                    print(f"📁 Session folder: {self.current_session_dir}")
                     return filepath
                 else:
+                    # Lưu metadata thất bại
+                    session_metadata["status"] = "failed"
+                    session_metadata["error"] = "Download failed"
+                    self._save_session_metadata(session_metadata)
                     raise Exception("Không thể tải video về")
                     
             except Exception as e:
+                # Lưu metadata lỗi
+                session_metadata["status"] = "error"
+                session_metadata["error"] = str(e)
+                self._save_session_metadata(session_metadata)
+                
                 print(f"❌ Lỗi khi sinh video: {e}")
                 return None
                 

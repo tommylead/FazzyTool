@@ -5,6 +5,7 @@ Module xử lý việc gọi API Gemini để sinh prompt tự động.
 import os
 import json
 from typing import Dict, Any, Optional
+from datetime import datetime
 
 import google.generativeai as genai
 from dotenv import load_dotenv
@@ -13,28 +14,39 @@ from dotenv import load_dotenv
 class GeminiPromptGenerator:
     """Lớp xử lý việc gọi API Gemini để sinh prompt tự động."""
     
-    def __init__(self):
+    def __init__(self, output_dir: str = "prompts"):
         """Khởi tạo API key từ biến môi trường."""
         load_dotenv()
         self.api_key = os.getenv("GEMINI_API_KEY")
+        self.output_dir = output_dir
+        
+        # Tạo thư mục prompts nếu chưa có
+        os.makedirs(self.output_dir, exist_ok=True)
         
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY không tìm thấy trong file .env")
             
         genai.configure(api_key=self.api_key)
-        self.model = genai.GenerativeModel('gemini-1.5-pro')
+        self.model = genai.GenerativeModel('gemini-1.5-flash')
         
-    def generate_prompt(self, topic: str) -> Dict[str, Any]:
+    def generate_prompt(self, topic: str, prompt_id: Optional[str] = None, save_to_file: bool = True) -> Dict[str, Any]:
         """
         Sinh prompt từ Gemini dựa trên chủ đề đầu vào.
         
         Args:
             topic: Chủ đề tiếng Việt làm đầu vào
+            prompt_id: ID/số thứ tự cho prompt (tự động tạo nếu None)
+            save_to_file: Có lưu vào file hay không
             
         Returns:
-            Dict chứa các prompt cho ảnh và video
+            Dict chứa các prompt cho ảnh và video + thông tin file
         """
         try:
+            # Tạo prompt_id nếu không có
+            if not prompt_id:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                prompt_id = f"prompt_{timestamp}"
+            
             system_prompt = """
             Bạn là trợ lý AI chuyên tạo prompt để sinh ảnh và video AI.
             Từ chủ đề người dùng cung cấp, hãy tạo ra các prompt phù hợp.
@@ -84,6 +96,20 @@ class GeminiPromptGenerator:
                 if key not in result_data:
                     raise ValueError(f"Thiếu trường '{key}' trong kết quả từ Gemini")
             
+            # Thêm metadata
+            result_data.update({
+                "topic": topic,
+                "prompt_id": prompt_id,
+                "generated_at": datetime.now().isoformat(),
+                "generated_by": "gemini-1.5-flash"
+            })
+            
+            # Lưu vào file nếu được yêu cầu
+            if save_to_file:
+                file_path = self.save_prompt_to_file(result_data, prompt_id)
+                result_data["file_path"] = file_path
+                print(f"💾 Đã lưu prompt: {file_path}")
+            
             return result_data
             
         except Exception as e:
@@ -109,11 +135,77 @@ class GeminiPromptGenerator:
             else:
                 raise Exception(f"❌ Lỗi khi gọi Gemini API: {error_msg}")
             
-    def save_prompt_to_json(self, prompt_data: Dict[str, Any], output_path: str) -> None:
-        """Lưu prompt vào file JSON."""
+    def save_prompt_to_file(self, prompt_data: Dict[str, Any], prompt_id: str) -> str:
+        """Lưu prompt vào file JSON với tên có thứ tự rõ ràng."""
         try:
-            with open(output_path, "w", encoding="utf-8") as f:
+            # Tạo tên file với format: prompt_001_topic.json
+            topic_safe = prompt_data.get('topic', 'unknown')[:30]  # Giới hạn độ dài
+            topic_safe = "".join(c for c in topic_safe if c.isalnum() or c in (' ', '-', '_')).strip()
+            topic_safe = topic_safe.replace(' ', '_')
+            
+            filename = f"{prompt_id}_{topic_safe}.json"
+            file_path = os.path.join(self.output_dir, filename)
+            
+            with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(prompt_data, f, ensure_ascii=False, indent=2)
-            print(f"Đã lưu prompt vào: {output_path}")
+                
+            return file_path
         except Exception as e:
-            raise Exception(f"Lỗi khi lưu prompt: {str(e)}") 
+            raise Exception(f"Lỗi khi lưu prompt: {str(e)}")
+    
+    def generate_batch_prompts(self, topics: list, start_index: int = 1) -> list:
+        """
+        Sinh nhiều prompt từ danh sách topic và lưu thành file có thứ tự.
+        
+        Args:
+            topics: Danh sách các chủ đề
+            start_index: Số bắt đầu đánh số (mặc định: 1)
+            
+        Returns:
+            List các prompt data với thông tin file
+        """
+        results = []
+        
+        for i, topic in enumerate(topics, start_index):
+            try:
+                # Tạo prompt_id có thứ tự
+                prompt_id = f"prompt_{i:03d}"  # 001, 002, 003...
+                
+                print(f"🔮 [{i}/{len(topics) + start_index - 1}] Đang sinh prompt cho: {topic}")
+                
+                prompt_data = self.generate_prompt(topic, prompt_id, save_to_file=True)
+                results.append(prompt_data)
+                
+                print(f"✅ Hoàn thành prompt {prompt_id}")
+                
+            except Exception as e:
+                print(f"❌ Lỗi sinh prompt {i}: {e}")
+                results.append({
+                    "topic": topic,
+                    "prompt_id": f"prompt_{i:03d}",
+                    "error": str(e),
+                    "status": "failed"
+                })
+        
+        # Tạo file summary
+        self._create_batch_summary(results)
+        
+        return results
+    
+    def _create_batch_summary(self, results: list):
+        """Tạo file tóm tắt batch generation."""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        summary_file = os.path.join(self.output_dir, f"batch_summary_{timestamp}.json")
+        
+        summary = {
+            "generated_at": datetime.now().isoformat(),
+            "total_prompts": len(results),
+            "successful": len([r for r in results if "error" not in r]),
+            "failed": len([r for r in results if "error" in r]),
+            "prompts": results
+        }
+        
+        with open(summary_file, "w", encoding="utf-8") as f:
+            json.dump(summary, f, ensure_ascii=False, indent=2)
+            
+        print(f"📊 Đã tạo file tóm tắt: {summary_file}") 

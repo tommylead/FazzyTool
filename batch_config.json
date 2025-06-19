@@ -1,0 +1,59 @@
+{
+  "batch_info": {
+    "name": "Demo Batch Processing",
+    "description": "Batch test các prompt có sẵn",
+    "created_at": "2025-06-18",
+    "version": "1.0"
+  },
+  "settings": {
+    "workflow": "image_then_video",
+    "concurrent_jobs": 2,
+    "max_retries": 3,
+    "delay_between_jobs": 2,
+    "default_num_images": 4,
+    "default_download_count": 2,
+    "auto_filename_prefix": true
+  },
+  "prompts": [
+    {
+      "type": "file",
+      "source": "prompts/landscape_prompt.json",
+      "priority": 1,
+      "enabled": true
+    },
+    {
+      "type": "file", 
+      "source": "prompts/portrait_prompt.json",
+      "priority": 2,
+      "enabled": true
+    },
+    {
+      "type": "manual",
+      "content": {
+        "image_prompt": "Cute orange cat sleeping peacefully on a sunny windowsill, soft natural lighting, cozy atmosphere, photorealistic, high quality, 4K",
+        "video_prompt": "Gentle camera movement showing cat breathing slowly, peaceful morning scene, warm golden light",
+        "video_duration": "5s",
+        "video_ratio": "1:1"
+      },
+      "num_images": 3,
+      "download_count": 2,
+      "filename_prefix": "sleepy_cat",
+      "priority": 3,
+      "enabled": true
+    },
+    {
+      "type": "manual",
+      "content": {
+        "image_prompt": "Happy golden retriever puppy playing in a colorful flower garden, sunny day, vibrant colors, joyful expression, detailed photography",
+        "video_prompt": "Puppy running playfully through garden, dynamic camera following, cheerful atmosphere",
+        "video_duration": "5s", 
+        "video_ratio": "16:9"
+      },
+      "num_images": 4,
+      "download_count": 3,
+      "filename_prefix": "happy_puppy",
+      "priority": 4,
+      "enabled": true
+    }
+  ]
+} 

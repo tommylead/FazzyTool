@@ -1,0 +1,167 @@
+===============================================================================
+                          🔧 HƯỚNG DẪN KHẮC PHỤC LỖI FAZZYTOOL 🔧
+===============================================================================
+
+📋 MỤC LỤC:
+1. Lỗi Gemini API Quota (Phổ biến nhất)
+2. Lỗi Cookie Freepik  
+3. Lỗi Module/Dependencies
+4. Lỗi Browser/Selenium
+5. Lỗi File/Thư mục
+6. Test và Troubleshooting
+
+===============================================================================
+🔥 1. LỖI GEMINI API QUOTA (Quan trọng nhất!)
+===============================================================================
+
+❌ TRIỆU CHỨNG:
+- "quota exceeded" 
+- "You exceeded your current quota"
+- "generate_content_free_tier_requests"
+
+💡 GIẢI PHÁP:
+
+A) TẠO API KEY MỚI (Khuyến nghị):
+   1. Mở: https://makersuite.google.com/app/apikey
+   2. Đăng nhập tài khoản Google KHÁC (hoặc tạo mới)
+   3. Tạo project mới
+   4. Tạo API Key mới
+   5. Copy vào file .env:
+      GEMINI_API_KEY=your_new_api_key_here
+
+B) SỬ DỤNG PROMPT CÓ SẴN:
+   python main.py file --file sample_prompts.json
+
+C) TẠO PROMPT THỦ CÔNG:
+   - Tool sẽ tự động tạo prompt thủ công khi API hết quota
+   - Hoặc chạy: python main.py ai --topic "chủ đề của bạn"
+
+===============================================================================
+🍪 2. LỖI COOKIE FREEPIK
+===============================================================================
+
+❌ TRIỆU CHỨNG:
+- "Cookie không hợp lệ"
+- "Không thể đăng nhập"
+- "Premium không hoạt động"
+
+💡 GIẢI PHÁP:
+
+A) KIỂM TRA TÀI KHOẢN:
+   - Đảm bảo có tài khoản Freepik Premium
+   - Đăng nhập thành công trên web
+
+B) CẬP NHẬT COOKIE:
+   1. Mở Chrome/Edge
+   2. Đăng nhập Freepik.com
+   3. F12 > Application > Cookies
+   4. Copy tất cả cookies
+   5. Paste vào cookie_template.txt
+
+C) SỬ DỤNG EXTENSION:
+   - Cài Cookie Editor extension
+   - Export cookies định dạng JSON
+   - Paste vào cookie_template.txt
+
+===============================================================================
+📦 3. LỖI MODULE/DEPENDENCIES  
+===============================================================================
+
+❌ TRIỆU CHỨNG:
+- "ModuleNotFoundError"
+- "ImportError"
+
+💡 GIẢI PHÁP:
+
+A) CÀI ĐẶT LẠI:
+   pip install -r requirements.txt
+
+B) CÀI ĐẶT THỦ CÔNG:
+   pip install selenium requests click python-dotenv pathlib
+
+C) KIỂM TRA PYTHON:
+   python --version  (phải >= 3.7)
+
+===============================================================================
+🌐 4. LỖI BROWSER/SELENIUM
+===============================================================================
+
+❌ TRIỆU CHỨNG:
+- "ChromeDriver không tìm thấy"
+- "Browser không khởi động"
+
+💡 GIẢI PHÁP:
+
+A) CẬP NHẬT CHROME:
+   - Mở Chrome
+   - Settings > About Chrome
+   - Cập nhật version mới nhất
+
+B) TẢI LẠI CHROMEDRIVER:
+   - Tool tự động tải driver
+   - Hoặc manual: https://chromedriver.chromium.org/
+
+C) CHẠY TEST:
+   python main.py test
+
+===============================================================================
+📁 5. LỖI FILE/THƯ MỤC
+===============================================================================
+
+❌ TRIỆU CHỨNG:
+- "File không tồn tại" 
+- "Permission denied"
+
+💡 GIẢI PHÁP:
+
+A) TẠO THƯ MỤC:
+   mkdir prompts
+   mkdir output
+
+B) KIỂM TRA QUYỀN:
+   - Chạy CMD với quyền Administrator
+   - Hoặc thay đổi thư mục làm việc
+
+===============================================================================
+🧪 6. TEST VÀ TROUBLESHOOTING
+===============================================================================
+
+🔍 LỆNH TEST CƠ BẢN:
+   python main.py test
+
+🔍 TEST TỪNG BƯỚC:
+
+1. Test cấu hình:
+   python main.py test
+
+2. Test prompt thủ công:
+   python main.py ai --topic "mèo" 
+
+3. Test với file có sẵn:
+   python main.py file --file sample_prompts.json
+
+4. Test chỉ tạo ảnh:
+   python main.py ai --topic "chó" --no-video
+
+5. Test hiển thị browser:
+   python main.py ai --topic "cảnh" --show-browser
+
+===============================================================================
+📞 LIÊN HỆ HỖ TRỢ
+===============================================================================
+
+🔥 LỖI KHẨN CẤP:
+1. Chạy: python main.py test
+2. Chụp màn hình lỗi
+3. Kiểm tra file .env và cookie_template.txt
+4. Thử các giải pháp trên
+
+🎯 LỜI KHUYÊN:
+- Luôn test trước khi chạy batch lớn
+- Backup file cấu hình quan trọng  
+- Sử dụng --show-browser để debug
+- Kiểm tra quota API thường xuyên
+
+===============================================================================
+                            🚀 CHÚC BẠN THÀNH CÔNG! 🚀
+=============================================================================== 
