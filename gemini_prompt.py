@@ -15,19 +15,45 @@ class GeminiPromptGenerator:
     """Lớp xử lý việc gọi API Gemini để sinh prompt tự động."""
     
     def __init__(self, output_dir: str = "prompts"):
-        """Khởi tạo API key từ biến môi trường."""
-        load_dotenv()
-        self.api_key = os.getenv("GEMINI_API_KEY")
+        """Khởi tạo API key từ config_template.txt."""
+        self.api_key = self._load_api_key_from_config()
         self.output_dir = output_dir
         
         # Tạo thư mục prompts nếu chưa có
         os.makedirs(self.output_dir, exist_ok=True)
         
         if not self.api_key:
-            raise ValueError("GEMINI_API_KEY không tìm thấy trong file .env")
+            raise ValueError("API key không tìm thấy trong config_template.txt")
             
         genai.configure(api_key=self.api_key)
         self.model = genai.GenerativeModel('gemini-1.5-flash')
+    
+    def _load_api_key_from_config(self) -> Optional[str]:
+        """Đọc API key từ config_template.txt"""
+        try:
+            if os.path.exists('config_template.txt'):
+                with open('config_template.txt', 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    
+                # Parse simple key=value format
+                for line in content.split('\n'):
+                    line = line.strip()
+                    if '=' in line and not line.startswith('#') and not line.startswith('[') and not line.startswith('==='):
+                        key, value = line.split('=', 1)
+                        key = key.strip().lower()
+                        value = value.strip()
+                        
+                        # Remove inline comments
+                        if '#' in value:
+                            value = value.split('#')[0].strip()
+                        
+                        if key == 'api_key':
+                            return value
+                            
+        except Exception as e:
+            print(f"Lỗi đọc config: {e}")
+            
+        return None
         
     def generate_prompt(self, topic: str, prompt_id: Optional[str] = None, save_to_file: bool = True) -> Dict[str, Any]:
         """
@@ -128,7 +154,7 @@ class GeminiPromptGenerator:
             elif "api" in error_msg.lower() and "key" in error_msg.lower():
                 raise Exception(
                     f"❌ API Key không hợp lệ!\n"
-                    f"💡 Kiểm tra lại GEMINI_API_KEY trong file .env\n"
+                    f"💡 Kiểm tra lại api_key trong config_template.txt\n"
                     f"Lấy API key mới tại: https://makersuite.google.com/app/apikey\n"
                     f"Chi tiết lỗi: {error_msg}"
                 )

@@ -3,7 +3,7 @@
 
 === GEMINI AI SETTINGS ===
 # API key để sử dụng Gemini AI (lấy từ https://makersuite.google.com/app/apikey)
-api_key=AIzaSyCsqM2ReH4biXvNH3xPmoqUOW2u9kGg5zw
+api_key=AIzaSyDV8tNKZQZbB6ZNKJqHDcx5XHjsAskVw4k
 
 === IMAGE GENERATION SETTINGS ===
 # Cấu hình mặc định cho sinh ảnh

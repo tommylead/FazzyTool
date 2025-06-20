@@ -17,6 +17,10 @@ PROMPT_IDEA_START
 Cảnh hoàng hôn trên bãi biển với sóng nhẹ
 PROMPT_IDEA_END
 
+PROMPT_IDEA_START
+con mèo dễ thương ngủ trên cửa sổ
+PROMPT_IDEA_END
+
 === CÁCH 2: PROMPT CHI TIẾT (THỦ CÔNG) ===
 Ghi prompt chi tiết theo format:
 
