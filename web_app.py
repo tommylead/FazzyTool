@@ -575,7 +575,7 @@ if __name__ == '__main__':
     import time
     
     print("🚀 Khởi động FazzyTool Web Interface...")
-    print("📝 Giao diện web sẽ chạy tại: http://localhost:5000")
+    print("📝 Giao diện web sẽ chạy tại: http://127.0.0.1:5000")
     print("🔧 Đảm bảo đã cấu hình cookie và API key trong Settings")
     
     # Hàm tự động mở Chrome sau 2 giây
@@ -596,7 +596,7 @@ if __name__ == '__main__':
             for chrome_path in chrome_paths:
                 if os.path.exists(chrome_path):
                     try:
-                        subprocess.Popen([chrome_path, "http://localhost:5000"])
+                        subprocess.Popen([chrome_path, "http://127.0.0.1:5000"])
                         print("🌐 Đã mở Chrome tự động!")
                         chrome_opened = True
                         break
@@ -605,17 +605,17 @@ if __name__ == '__main__':
             
             # Nếu không tìm thấy Chrome, dùng browser mặc định
             if not chrome_opened:
-                webbrowser.open('http://localhost:5000')
+                webbrowser.open('http://127.0.0.1:5000')
                 print("🌐 Đã mở browser mặc định (không tìm thấy Chrome)!")
                 
         except Exception as e:
             print(f"⚠️ Không thể mở browser tự động: {e}")
-            print("👉 Vui lòng mở browser và vào: http://localhost:5000")
+            print("👉 Vui lòng mở browser và vào: http://127.0.0.1:5000")
     
     # Chạy auto-open browser trong background thread
-    browser_thread = threading.Thread(target=auto_open_browser)
-    browser_thread.daemon = True
-    browser_thread.start()
+    # browser_thread = threading.Thread(target=auto_open_browser) # DISABLED
+    # browser_thread.daemon = True # DISABLED
+    # browser_thread.start() # DISABLED
     
     # Khởi động Flask app
     app.run(debug=False, host='0.0.0.0', port=5000, use_reloader=False)

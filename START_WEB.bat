@@ -103,12 +103,12 @@ if not exist "web_app.py" (
 echo.
 echo [SUCCESS] Tat ca dependencies da duoc cai dat!
 echo [INFO] Khoi dong FazzyTool Web Interface...
-echo [INFO] Giao dien web se mo tai: http://localhost:5000
+echo [INFO] Giao dien web se mo tai: http://127.0.0.1:5000
 echo [INFO] Nhan Ctrl+C de dung web server
 echo.
 echo ===============================================
 echo [QUAN TRONG] Web server se tu dong:
-echo - Khoi dong tai http://localhost:5000
+echo - Khoi dong tai http://127.0.0.1:5000
 echo - Mo trinh duyet sau 2 giay
 echo - Vao Settings de cau hinh API key va cookie
 echo ===============================================
@@ -123,7 +123,7 @@ echo [INFO] Cho web server khoi dong... (3 giay)
 timeout /t 3 /nobreak >nul
 
 :: Tự động mở Chrome
-echo [INFO] Mo Chrome tai http://localhost:5000...
+echo [INFO] Mo Chrome tai http://127.0.0.1:5000...
 
 :: Thử các đường dẫn Chrome phổ biến
 set CHROME_FOUND=0
@@ -131,7 +131,7 @@ set CHROME_FOUND=0
 :: Chrome 64-bit
 if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" (
     echo [SUCCESS] Tim thay Chrome 64-bit
-    start "" "%ProgramFiles%\Google\Chrome\Application\chrome.exe" "http://localhost:5000"
+    start "" "%ProgramFiles%\Google\Chrome\Application\chrome.exe" "http://127.0.0.1:5000"
     set CHROME_FOUND=1
     goto wait_server
 )
@@ -139,7 +139,7 @@ if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" (
 :: Chrome 32-bit
 if exist "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" (
     echo [SUCCESS] Tim thay Chrome 32-bit
-    start "" "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" "http://localhost:5000"
+    start "" "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" "http://127.0.0.1:5000"
     set CHROME_FOUND=1
     goto wait_server
 )
@@ -147,7 +147,7 @@ if exist "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" (
 :: Chrome trong user folder
 if exist "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" (
     echo [SUCCESS] Tim thay Chrome user install
-    start "" "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" "http://localhost:5000"
+    start "" "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" "http://127.0.0.1:5000"
     set CHROME_FOUND=1
     goto wait_server
 )
@@ -155,7 +155,7 @@ if exist "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" (
 :: Không tìm thấy Chrome, dùng default browser
 if %CHROME_FOUND%==0 (
     echo [WARNING] Khong tim thay Chrome, su dung trinh duyet mac dinh...
-    start http://localhost:5000
+    start http://127.0.0.1:5000
 )
 
 :wait_server
@@ -163,7 +163,7 @@ echo.
 echo ===============================================
 echo [THANH CONG] FazzyTool Web Interface da khoi dong!
 echo.
-echo - URL: http://localhost:5000
+echo - URL: http://127.0.0.1:5000
 echo - Trinh duyet: Chrome (neu co) hoac mac dinh
 echo - Nhan Ctrl+C trong cua so nay de dung server
 echo ===============================================
