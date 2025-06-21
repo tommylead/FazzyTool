@@ -1,0 +1,369 @@
+{% extends "base.html" %}
+
+{% block title %}Cài đặt - FazzyTool{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex align-items-center mb-4">
+            <i class="fas fa-cog fa-2x text-info me-3"></i>
+            <div>
+                <h2 class="text-white mb-0">Cài đặt</h2>
+                <p class="text-white-50 mb-0">Cấu hình API key và cookie cho FazzyTool</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- API Configuration -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-key me-2"></i>Cấu hình API
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="apiForm">
+                    <div class="mb-3">
+                        <label for="apiKey" class="form-label">Google Gemini API Key <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input 
+                                type="password" 
+                                class="form-control" 
+                                id="apiKey" 
+                                placeholder="AIza..."
+                                value="{{ api_key or '' }}">
+                            <button class="btn btn-outline-secondary" type="button" id="toggleApiKey">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Lấy API key từ <a href="https://makersuite.google.com/app/apikey" target="_blank" class="text-decoration-none">Google AI Studio</a>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="submit" class="btn btn-primary" id="saveApiBtn">
+                            <i class="fas fa-save me-1"></i>Lưu API Key
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Cookie Information -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-cookie-bite me-2"></i>Cấu hình Cookie Freepik
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle me-2"></i>Hướng dẫn lấy cookie:</h6>
+                    <ol class="mb-0">
+                        <li>Mở Firefox và đăng nhập vào <a href="https://www.freepik.com" target="_blank">Freepik.com</a></li>
+                        <li>Nhấn F12 để mở Developer Tools</li>
+                        <li>Vào tab "Storage" hoặc "Application"</li>
+                        <li>Chọn "Cookies" → "https://www.freepik.com"</li>
+                        <li>Right-click vào cookie list → "Select All" → "Copy"</li>
+                        <li>Paste vào file <code>cookie_template.txt</code></li>
+                    </ol>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Vị trí file cookie:</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" value="cookie_template.txt" readonly>
+                        <button class="btn btn-outline-primary" type="button" id="openCookieFile">
+                            <i class="fas fa-external-link-alt me-1"></i>Mở file
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Trạng thái cookie:</label>
+                    <div id="cookieStatus" class="d-flex align-items-center">
+                        {% if has_cookie %}
+                            <span class="badge bg-success me-2">
+                                <i class="fas fa-check me-1"></i>Đã cấu hình
+                            </span>
+                            <small class="text-muted">Cookie đã được tìm thấy và sẵn sàng sử dụng</small>
+                        {% else %}
+                            <span class="badge bg-danger me-2">
+                                <i class="fas fa-times me-1"></i>Chưa cấu hình
+                            </span>
+                            <small class="text-muted">Vui lòng cấu hình cookie trong file cookie_template.txt</small>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <button type="button" class="btn btn-outline-info" id="checkCookieBtn">
+                    <i class="fas fa-sync me-1"></i>Kiểm tra lại cookie
+                </button>
+            </div>
+        </div>
+
+        <!-- Test Connection -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-network-wired me-2"></i>Kiểm tra kết nối
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Kiểm tra kết nối đến các dịch vụ:</p>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <button type="button" class="btn btn-outline-primary w-100" id="testGeminiBtn">
+                            <i class="fas fa-brain me-1"></i>Test Gemini API
+                        </button>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <button type="button" class="btn btn-outline-success w-100" id="testFreepikBtn">
+                            <i class="fas fa-image me-1"></i>Test Freepik Cookie
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="testResults" style="display: none;">
+                    <!-- Test results will be displayed here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Status Overview -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>Trạng thái hệ thống
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>API Key:</span>
+                        {% if config_status %}
+                            <span class="badge bg-success">Đã cấu hình</span>
+                        {% else %}
+                            <span class="badge bg-danger">Chưa cấu hình</span>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>Cookie Freepik:</span>
+                        {% if has_cookie %}
+                            <span class="badge bg-success">Đã cấu hình</span>
+                        {% else %}
+                            <span class="badge bg-danger">Chưa cấu hình</span>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>Web Interface:</span>
+                        <span class="badge bg-success">Hoạt động</span>
+                    </div>
+                </div>
+                
+                {% if config_status and has_cookie %}
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Sẵn sàng!</strong><br>
+                        Tất cả cấu hình đã hoàn tất.
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Cần cấu hình</strong><br>
+                        Vui lòng hoàn tất cấu hình để sử dụng.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-bolt me-2"></i>Thao tác nhanh
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="window.open('https://makersuite.google.com/app/apikey', '_blank')">
+                        <i class="fas fa-external-link-alt me-1"></i>Lấy Gemini API Key
+                    </button>
+                    <button type="button" class="btn btn-outline-success btn-sm" onclick="window.open('https://www.freepik.com', '_blank')">
+                        <i class="fas fa-external-link-alt me-1"></i>Đến Freepik.com
+                    </button>
+                    <button type="button" class="btn btn-outline-info btn-sm" id="refreshPageBtn">
+                        <i class="fas fa-sync me-1"></i>Refresh trang
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const apiForm = document.getElementById('apiForm');
+        const toggleApiKeyBtn = document.getElementById('toggleApiKey');
+        const apiKeyInput = document.getElementById('apiKey');
+        const checkCookieBtn = document.getElementById('checkCookieBtn');
+        const testGeminiBtn = document.getElementById('testGeminiBtn');
+        const testFreepikBtn = document.getElementById('testFreepikBtn');
+        const refreshPageBtn = document.getElementById('refreshPageBtn');
+        
+        // Toggle API key visibility
+        toggleApiKeyBtn.addEventListener('click', function() {
+            if (apiKeyInput.type === 'password') {
+                apiKeyInput.type = 'text';
+                this.innerHTML = '<i class="fas fa-eye-slash"></i>';
+            } else {
+                apiKeyInput.type = 'password';
+                this.innerHTML = '<i class="fas fa-eye"></i>';
+            }
+        });
+        
+        // Handle API form submission
+        apiForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveApiKey();
+        });
+        
+        // Check cookie button
+        checkCookieBtn.addEventListener('click', function() {
+            location.reload();
+        });
+        
+        // Test buttons
+        testGeminiBtn.addEventListener('click', testGeminiConnection);
+        testFreepikBtn.addEventListener('click', testFreepikConnection);
+        
+        // Refresh page button
+        refreshPageBtn.addEventListener('click', function() {
+            location.reload();
+        });
+        
+        // Open cookie file (works on Windows)
+        document.getElementById('openCookieFile').addEventListener('click', function() {
+            alert('Vui lòng mở file cookie_template.txt trong thư mục gốc của FazzyTool bằng Notepad hoặc editor khác.');
+        });
+    });
+    
+    function saveApiKey() {
+        const apiKey = document.getElementById('apiKey').value.trim();
+        
+        if (!apiKey) {
+            alert('Vui lòng nhập API key!');
+            return;
+        }
+        
+        const saveBtn = document.getElementById('saveApiBtn');
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang lưu...';
+        
+        fetch('/api/config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ api_key: apiKey })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            
+            alert('API key đã được lưu thành công!');
+            location.reload();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Lỗi khi lưu API key: ' + error.message);
+        })
+        .finally(() => {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fas fa-save me-1"></i>Lưu API Key';
+        });
+    }
+    
+    function testGeminiConnection() {
+        const btn = document.getElementById('testGeminiBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang test...';
+        
+        // Simple test by generating a prompt
+        fetch('/api/generate-prompt', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ topic: 'test connection' })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            
+            showTestResult('gemini', true, 'Kết nối Gemini API thành công!');
+        })
+        .catch(error => {
+            console.error('Gemini test error:', error);
+            showTestResult('gemini', false, 'Lỗi kết nối Gemini: ' + error.message);
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-brain me-1"></i>Test Gemini API';
+        });
+    }
+    
+    function testFreepikConnection() {
+        const btn = document.getElementById('testFreepikBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang test...';
+        
+        // Check cookie status by calling current page's status
+        const cookieStatus = document.querySelector('#cookieStatus .badge');
+        const hasCookie = cookieStatus && cookieStatus.classList.contains('bg-success');
+        
+        setTimeout(() => {
+            if (hasCookie) {
+                showTestResult('freepik', true, 'Cookie Freepik đã được cấu hình!');
+            } else {
+                showTestResult('freepik', false, 'Cookie Freepik chưa được cấu hình!');
+            }
+            
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-image me-1"></i>Test Freepik Cookie';
+        }, 1000);
+    }
+    
+    function showTestResult(service, success, message) {
+        const resultsDiv = document.getElementById('testResults');
+        resultsDiv.style.display = 'block';
+        
+        const alertClass = success ? 'alert-success' : 'alert-danger';
+        const icon = success ? 'fa-check-circle' : 'fa-exclamation-circle';
+        
+        const resultHtml = `
+            <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                <i class="fas ${icon} me-2"></i>
+                <strong>${service === 'gemini' ? 'Gemini API' : 'Freepik Cookie'}:</strong> ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        
+        resultsDiv.innerHTML = resultHtml;
+    }
+</script>
+{% endblock %}

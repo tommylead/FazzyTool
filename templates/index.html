@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}FazzyTool - Trang chủ{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="text-center mb-5">
+            <h1 class="display-4 text-white fw-bold mb-3">
+                <i class="fas fa-magic text-warning"></i>
+                FazzyTool
+            </h1>
+            <p class="lead text-white-50">
+                Công cụ AI tự động tạo ảnh và video từ Freepik Pikaso
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Tạo ảnh -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 text-center">
+            <div class="card-body">
+                <div class="mb-3">
+                    <i class="fas fa-image fa-3x text-primary"></i>
+                </div>
+                <h5 class="card-title">Tạo ảnh</h5>
+                <p class="card-text">
+                    Tạo ảnh AI từ prompt với Freepik Pikaso
+                </p>
+                <a href="{{ url_for('generate_image_page') }}" class="btn btn-primary">
+                    <i class="fas fa-play me-1"></i>Bắt đầu
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tạo prompt AI -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 text-center">
+            <div class="card-body">
+                <div class="mb-3">
+                    <i class="fas fa-brain fa-3x text-success"></i>
+                </div>
+                <h5 class="card-title">Tạo prompt AI</h5>
+                <p class="card-text">
+                    Sinh prompt tự động bằng Google Gemini AI
+                </p>
+                <a href="{{ url_for('generate_prompt_page') }}" class="btn btn-success">
+                    <i class="fas fa-magic me-1"></i>Tạo ngay
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Xử lý hàng loạt -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 text-center">
+            <div class="card-body">
+                <div class="mb-3">
+                    <i class="fas fa-layer-group fa-3x text-warning"></i>
+                </div>
+                <h5 class="card-title">Xử lý hàng loạt</h5>
+                <p class="card-text">
+                    Tạo nhiều ảnh/video cùng lúc
+                </p>
+                <a href="{{ url_for('batch_process_page') }}" class="btn btn-warning">
+                    <i class="fas fa-rocket me-1"></i>Batch
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cài đặt -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 text-center">
+            <div class="card-body">
+                <div class="mb-3">
+                    <i class="fas fa-cog fa-3x text-info"></i>
+                </div>
+                <h5 class="card-title">Cài đặt</h5>
+                <p class="card-text">
+                    Cấu hình API key và cookie
+                </p>
+                <a href="{{ url_for('settings_page') }}" class="btn btn-info">
+                    <i class="fas fa-tools me-1"></i>Cài đặt
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Thống kê -->
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>Thống kê
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <i class="fas fa-images fa-2x text-primary mb-2"></i>
+                            <h4 id="total-images" class="text-primary">0</h4>
+                            <small class="text-muted">Ảnh đã tạo</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <i class="fas fa-file-text fa-2x text-success mb-2"></i>
+                            <h4 id="total-prompts" class="text-success">0</h4>
+                            <small class="text-muted">Prompt đã tạo</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <i class="fas fa-clock fa-2x text-warning mb-2"></i>
+                            <h4 id="total-time" class="text-warning">0h</h4>
+                            <small class="text-muted">Thời gian tiết kiệm</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <i class="fas fa-star fa-2x text-info mb-2"></i>
+                            <h4 class="text-info">100%</h4>
+                            <small class="text-muted">Tự động hóa</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Files -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-image me-2"></i>Ảnh gần đây
+                </h6>
+            </div>
+            <div class="card-body">
+                <div id="recent-images" class="row g-2">
+                    <!-- Images will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-file-text me-2"></i>Prompt gần đây
+                </h6>
+            </div>
+            <div class="card-body">
+                <div id="recent-prompts">
+                    <!-- Prompts will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Load statistics and recent files
+    document.addEventListener('DOMContentLoaded', function() {
+        loadStatistics();
+        loadRecentFiles();
+    });
+    
+    function loadStatistics() {
+        Promise.all([
+            fetch('/api/images').then(r => r.json()),
+            fetch('/api/prompts').then(r => r.json())
+        ]).then(([images, prompts]) => {
+            document.getElementById('total-images').textContent = images.length || 0;
+            document.getElementById('total-prompts').textContent = prompts.length || 0;
+            
+            // Estimate time saved (assuming 2 minutes per image manually)
+            const timeSaved = (images.length || 0) * 2 / 60;
+            document.getElementById('total-time').textContent = timeSaved.toFixed(1) + 'h';
+        }).catch(console.error);
+    }
+    
+    function loadRecentFiles() {
+        // Load recent images
+        fetch('/api/images')
+            .then(r => r.json())
+            .then(images => {
+                const container = document.getElementById('recent-images');
+                container.innerHTML = '';
+                
+                images.slice(0, 6).forEach(image => {
+                    const div = document.createElement('div');
+                    div.className = 'col-4 mb-2';
+                    div.innerHTML = `
+                        <div class="position-relative">
+                            <img src="/output/${image.filename}" 
+                                 class="img-fluid rounded" 
+                                 style="height: 80px; width: 100%; object-fit: cover;"
+                                 title="${image.filename}">
+                            <div class="position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-75 text-white text-center p-1">
+                                <small style="font-size: 0.7rem;">${image.filename.substring(0, 10)}...</small>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+                
+                if (images.length === 0) {
+                    container.innerHTML = '<div class="col-12 text-center text-muted"><small>Chưa có ảnh nào</small></div>';
+                }
+            })
+            .catch(console.error);
+        
+        // Load recent prompts
+        fetch('/api/prompts')
+            .then(r => r.json())
+            .then(prompts => {
+                const container = document.getElementById('recent-prompts');
+                container.innerHTML = '';
+                
+                prompts.slice(0, 3).forEach(prompt => {
+                    const div = document.createElement('div');
+                    div.className = 'mb-2 p-2 bg-light rounded';
+                    div.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <strong class="text-primary">${prompt.topic || 'Không có chủ đề'}</strong>
+                                <p class="mb-1 text-muted small">${prompt.content.substring(0, 80)}...</p>
+                                <small class="text-muted">${prompt.created}</small>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+                
+                if (prompts.length === 0) {
+                    container.innerHTML = '<div class="text-center text-muted"><small>Chưa có prompt nào</small></div>';
+                }
+            })
+            .catch(console.error);
+    }
+</script>
+{% endblock %} 

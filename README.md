@@ -2,84 +2,60 @@
 
 Tool tự động hóa việc sinh ảnh và video trên nền tảng [Freepik Pikaso](https://www.freepik.com/pikaso) thông qua trình duyệt tự động, dựa trên prompt do người dùng nhập hoặc do AI (Gemini API) sinh ra.
 
-## Tính năng chính
+## 🚀 Tính năng chính
 
-1. **Hai chế độ đầu vào:**
-   - Nhập prompt trực tiếp từ file `text / json / docx`
-   - Hoặc nhập **chủ đề tiếng Việt**, tool sẽ gọi Gemini API để sinh prompt tự động
+- **🖼️ Tạo ảnh AI**: Sử dụng Freepik AI Image Generator
+- **🎬 Tạo video AI**: Chuyển ảnh thành video hoặc text-to-video
+- **🤖 AI Prompt**: Tự động sinh prompt từ chủ đề tiếng Việt bằng Gemini AI
+- **📦 Xử lý hàng loạt**: Batch processing với file template
+- **🌐 Giao diện Web**: Web interface hiện đại với real-time tracking
+- **⚙️ Cấu hình linh hoạt**: Tùy chỉnh số lượng ảnh, browser, timeout...
 
-2. **Tự động hóa sinh ảnh:**
-   - Truy cập Freepik AI Image Generator
-   - Sử dụng model `Flux Kontext Pro`
-   - Dán prompt vào và sinh ảnh
+## 🔧 Cài đặt nhanh
 
-3. **Tự động hóa sinh video:**
-   - Truy cập Freepik AI Video Generator
-   - Sử dụng model `Kling Master 2.1`
-   - Hỗ trợ nhiều thời lượng và tỉ lệ khung hình
-
-## Yêu cầu
-
-- Python 3.10 trở lên
-- Tài khoản Freepik Premium (để lấy cookie)
-- API Key của Gemini (nếu muốn dùng chế độ AI)
-
-## Cài đặt
-
-1. **Clone repository:**
-   ```bash
-   git clone https://github.com/yourusername/fazzytool.git
-   cd fazzytool
-   ```
-
-2. **Cài đặt thư viện:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Thiết lập môi trường:**
-   ```bash
-   python main.py setup
-   ```
-   Sau đó, cập nhật file `.env` với API key Gemini và cookie Freepik của bạn.
-
-4. **Cài đặt trình duyệt cho Playwright:**
-   ```bash
-   playwright install
-   ```
-
-## Cách sử dụng
-
-### 1. Sinh ảnh và video từ chủ đề bằng AI
-
+### Bước 1: Cài đặt dependencies
 ```bash
-python main.py ai --topic "Khu vườn nhiệt đới với hoa lan đầy màu sắc"
+# Chạy file .bat tự động
+INSTALL_REQUIREMENTS.bat
+
+# Hoặc cài thủ công
+pip install -r requirements.txt
+playwright install chromium firefox
 ```
 
-Tùy chọn:
-- `--no-image`: Chỉ sinh video, không sinh ảnh
-- `--no-video`: Chỉ sinh ảnh, không sinh video
-- `--show-browser`: Hiển thị trình duyệt khi đang chạy (hữu ích để debug)
-
-### 2. Sinh ảnh và video từ file prompt
-
+### Bước 2: Khởi chạy
 ```bash
-python main.py file --file /path/to/prompt.json
+# Giao diện web (khuyến nghị)
+START_WEB.bat
+
+# Menu CLI
+START.bat
 ```
 
-Định dạng file JSON:
-```json
-{
-  "image_prompt": "Tropical garden with colorful orchids...",
-  "video_prompt": "Tropical garden with colorful orchids...",
-  "video_duration": "5s",
-  "video_ratio": "1:1"
-}
+## 🌐 Browser Configuration
+
+**FazzyTool mặc định sử dụng Chrome (Chromium) để đảm bảo tính ổn định và hiệu suất tốt nhất.**
+
+### Cấu hình browser trong `config_template.txt`:
+```
+=== BROWSER SETTINGS ===
+browser=chrome               # Loại browser: chrome hoặc firefox (KHUYẾN NGHỊ: chrome)
+headless=false               # true = chạy ẩn browser, false = hiển thị UI
+show_browser=false           # Riêng cho Freepik operations
 ```
 
-Bạn cũng có thể sử dụng file .txt hoặc .docx, nhưng cần lưu ý rằng trong trường hợp đó, nội dung sẽ được sử dụng làm prompt cho cả ảnh và video, với các thông số mặc định.
+### Ưu điểm của Chrome:
+- ✅ Tính ổn định cao hơn
+- ✅ Hỗ trợ tốt hơn cho Freepik AI Generator
+- ✅ Render JavaScript nhanh hơn
+- ✅ Ít lỗi timeout
 
-## Cấu trúc thư mục
+### Nếu gặp lỗi với Chrome:
+1. Thử set `show_browser=true` trong config
+2. Hoặc đổi sang `browser=firefox`
+3. Chạy lại `INSTALL_REQUIREMENTS.bat`
+
+## �� Cấu trúc project
 
 ```
 /fazzytool/

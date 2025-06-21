@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+
+{% block title %}Tạo ảnh AI - FazzyTool{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex align-items-center mb-4">
+            <i class="fas fa-image fa-2x text-primary me-3"></i>
+            <div>
+                <h2 class="text-white mb-0">Tạo ảnh AI</h2>
+                <p class="text-white-50 mb-0">Sinh ảnh từ prompt bằng Freepik Pikaso</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Form tạo ảnh -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-edit me-2"></i>Nhập thông tin
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="imageForm">
+                    <div class="mb-3">
+                        <label for="prompt" class="form-label">Prompt (tiếng Anh) <span class="text-danger">*</span></label>
+                        <textarea 
+                            class="form-control" 
+                            id="prompt" 
+                            rows="4" 
+                            placeholder="Mô tả chi tiết ảnh bạn muốn tạo..."
+                            required></textarea>
+                        <div class="form-text">
+                            <i class="fas fa-lightbulb me-1"></i>
+                            Mẹo: Mô tả càng chi tiết, kết quả càng chính xác
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="numImages" class="form-label">Số lượng ảnh sinh ra</label>
+                            <select class="form-control" id="numImages">
+                                <option value="1">1 ảnh</option>
+                                <option value="2">2 ảnh</option>
+                                <option value="3">3 ảnh</option>
+                                <option value="4" selected>4 ảnh (khuyến nghị)</option>
+                                <option value="5">5 ảnh</option>
+                                <option value="6">6 ảnh</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="downloadCount" class="form-label">Số lượng ảnh tải về</label>
+                            <select class="form-control" id="downloadCount">
+                                <option value="">Tất cả</option>
+                                <option value="1">1 ảnh</option>
+                                <option value="2" selected>2 ảnh</option>
+                                <option value="3">3 ảnh</option>
+                                <option value="4">4 ảnh</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="filenamePrefix" class="form-label">Tiền tố tên file (tùy chọn)</label>
+                        <input 
+                            type="text" 
+                            class="form-control" 
+                            id="filenamePrefix" 
+                            placeholder="Ví dụ: cat_cute">
+                        <div class="form-text">Để trống sẽ tự động đặt tên theo timestamp</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="showBrowser">
+                            <label class="form-check-label" for="showBrowser">
+                                Hiển thị trình duyệt (để debug)
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-secondary me-md-2" id="clearBtn">
+                            <i class="fas fa-eraser me-1"></i>Xóa
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="generateBtn">
+                            <i class="fas fa-play me-1"></i>Tạo ảnh
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Trạng thái và kết quả -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>Trạng thái
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="statusSection" style="display: none;">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <small class="text-muted">Tiến trình</small>
+                            <small class="text-muted" id="progressText">0%</small>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info" id="statusMessage">
+                        <i class="fas fa-spinner fa-spin me-2"></i>Đang khởi tạo...
+                    </div>
+                </div>
+                
+                <div id="resultSection" style="display: none;">
+                    <h6>Kết quả:</h6>
+                    <div id="resultImages" class="row g-2">
+                        <!-- Images will be displayed here -->
+                    </div>
+                </div>
+                
+                <!-- Hướng dẫn -->
+                <div id="instructionSection">
+                    <h6>Hướng dẫn:</h6>
+                    <ol class="small">
+                        <li>Nhập prompt mô tả ảnh (tiếng Anh)</li>
+                        <li>Chọn số lượng ảnh sinh ra</li>
+                        <li>Chọn số lượng ảnh muốn tải về</li>
+                        <li>Nhấn "Tạo ảnh" và chờ kết quả</li>
+                    </ol>
+                    
+                    <div class="alert alert-warning">
+                        <small>
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            Đảm bảo đã cấu hình cookie Freepik trong mục Cài đặt
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Prompt examples -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>Ví dụ prompt
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="prompt-examples">
+                    <div class="mb-2">
+                        <button class="btn btn-outline-primary btn-sm w-100 text-start example-btn" 
+                                data-prompt="A cute orange cat sleeping on a windowsill with sunlight streaming through">
+                            Mèo cam dễ thương ngủ trên cửa sổ
+                        </button>
+                    </div>
+                    <div class="mb-2">
+                        <button class="btn btn-outline-primary btn-sm w-100 text-start example-btn" 
+                                data-prompt="Beautiful sunset landscape with mountains and lake reflection">
+                            Phong cảnh hoàng hôn với núi và hồ
+                        </button>
+                    </div>
+                    <div class="mb-2">
+                        <button class="btn btn-outline-primary btn-sm w-100 text-start example-btn" 
+                                data-prompt="Modern minimalist living room with natural light and plants">
+                            Phòng khách tối giản hiện đại
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentTaskId = null;
+    let statusCheckInterval = null;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('imageForm');
+        const generateBtn = document.getElementById('generateBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const exampleBtns = document.querySelectorAll('.example-btn');
+        
+        // Handle form submission
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            generateImage();
+        });
+        
+        // Handle clear button
+        clearBtn.addEventListener('click', function() {
+            form.reset();
+            hideStatus();
+        });
+        
+        // Handle example prompts
+        exampleBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.getElementById('prompt').value = this.dataset.prompt;
+            });
+        });
+        
+        // Check for prompt parameter in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const promptParam = urlParams.get('prompt');
+        if (promptParam) {
+            document.getElementById('prompt').value = promptParam;
+        }
+    });
+    
+    function generateImage() {
+        const form = document.getElementById('imageForm');
+        const formData = new FormData(form);
+        
+        const data = {
+            prompt: document.getElementById('prompt').value.trim(),
+            num_images: parseInt(document.getElementById('numImages').value),
+            download_count: document.getElementById('downloadCount').value ? parseInt(document.getElementById('downloadCount').value) : null,
+            filename_prefix: document.getElementById('filenamePrefix').value.trim() || null,
+            show_browser: document.getElementById('showBrowser').checked
+        };
+        
+        if (!data.prompt) {
+            alert('Vui lòng nhập prompt!');
+            return;
+        }
+        
+        // Show loading state
+        showStatus();
+        document.getElementById('generateBtn').disabled = true;
+        document.getElementById('generateBtn').innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang tạo...';
+        
+        // Start image generation
+        fetch('/api/generate-image', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            
+            currentTaskId = result.task_id;
+            checkTaskStatus();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showError(error.message);
+            resetForm();
+        });
+    }
+    
+    function checkTaskStatus() {
+        if (!currentTaskId) return;
+        
+        statusCheckInterval = setInterval(() => {
+            fetch(`/api/task-status/${currentTaskId}`)
+                .then(response => response.json())
+                .then(status => {
+                    updateProgress(status.progress || 0, status.message || 'Đang xử lý...');
+                    
+                    if (status.status === 'completed') {
+                        clearInterval(statusCheckInterval);
+                        showResults(status.results || []);
+                        resetForm();
+                    } else if (status.status === 'error') {
+                        clearInterval(statusCheckInterval);
+                        showError(status.message || 'Có lỗi xảy ra');
+                        resetForm();
+                    }
+                })
+                .catch(error => {
+                    console.error('Status check error:', error);
+                });
+        }, 2000);
+    }
+    
+    function showStatus() {
+        document.getElementById('instructionSection').style.display = 'none';
+        document.getElementById('statusSection').style.display = 'block';
+        document.getElementById('resultSection').style.display = 'none';
+    }
+    
+    function hideStatus() {
+        document.getElementById('instructionSection').style.display = 'block';
+        document.getElementById('statusSection').style.display = 'none';
+        document.getElementById('resultSection').style.display = 'none';
+    }
+    
+    function updateProgress(progress, message) {
+        document.getElementById('progressBar').style.width = progress + '%';
+        document.getElementById('progressText').textContent = progress + '%';
+        document.getElementById('statusMessage').innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i>${message}`;
+    }
+    
+    function showResults(results) {
+        const container = document.getElementById('resultImages');
+        container.innerHTML = '';
+        
+        if (results && results.length > 0) {
+            results.forEach(filename => {
+                const div = document.createElement('div');
+                div.className = 'col-6 mb-2';
+                div.innerHTML = `
+                    <div class="position-relative">
+                        <img src="/output/${filename}" class="img-fluid rounded" style="width: 100%; height: 80px; object-fit: cover;">
+                        <div class="position-absolute top-0 end-0 p-1">
+                            <a href="/output/${filename}" target="_blank" class="btn btn-sm btn-primary">
+                                <i class="fas fa-external-link-alt"></i>
+                            </a>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+            
+            document.getElementById('resultSection').style.display = 'block';
+            document.getElementById('statusMessage').innerHTML = `<i class="fas fa-check-circle text-success me-2"></i>Hoàn thành! Đã tạo ${results.length} ảnh`;
+        } else {
+            document.getElementById('statusMessage').innerHTML = `<i class="fas fa-exclamation-triangle text-warning me-2"></i>Không có ảnh nào được tạo`;
+        }
+    }
+    
+    function showError(message) {
+        document.getElementById('statusMessage').innerHTML = `<i class="fas fa-exclamation-circle text-danger me-2"></i>Lỗi: ${message}`;
+        document.getElementById('statusMessage').className = 'alert alert-danger';
+    }
+    
+    function resetForm() {
+        document.getElementById('generateBtn').disabled = false;
+        document.getElementById('generateBtn').innerHTML = '<i class="fas fa-play me-1"></i>Tạo ảnh';
+        currentTaskId = null;
+        if (statusCheckInterval) {
+            clearInterval(statusCheckInterval);
+            statusCheckInterval = null;
+        }
+    }
+</script>
+{% endblock %}
+</rewritten_file>

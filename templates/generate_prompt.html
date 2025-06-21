@@ -1,0 +1,415 @@
+{% extends "base.html" %}
+
+{% block title %}Tạo prompt AI - FazzyTool{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex align-items-center mb-4">
+            <i class="fas fa-brain fa-2x text-success me-3"></i>
+            <div>
+                <h2 class="text-white mb-0">Tạo prompt AI</h2>
+                <p class="text-white-50 mb-0">Sinh prompt tự động bằng Google Gemini AI</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Form tạo prompt -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-edit me-2"></i>Nhập chủ đề
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="promptForm">
+                    <div class="mb-3">
+                        <label for="topic" class="form-label">Chủ đề (tiếng Việt) <span class="text-danger">*</span></label>
+                        <input 
+                            type="text" 
+                            class="form-control" 
+                            id="topic" 
+                            placeholder="Ví dụ: con mèo dễ thương, phong cảnh biển đẹp..."
+                            required>
+                        <div class="form-text">
+                            <i class="fas fa-lightbulb me-1"></i>
+                            Mô tả ngắn gọn về những gì bạn muốn tạo ảnh
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-secondary me-md-2" id="clearBtn">
+                            <i class="fas fa-eraser me-1"></i>Xóa
+                        </button>
+                        <button type="submit" class="btn btn-success" id="generateBtn">
+                            <i class="fas fa-magic me-1"></i>Tạo prompt
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Kết quả prompt -->
+        <div class="card mt-3" id="resultCard" style="display: none;">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-file-text me-2"></i>Prompt đã tạo
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Chủ đề:</label>
+                    <div id="resultTopic" class="form-control-plaintext fw-bold"></div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Prompt (tiếng Anh):</label>
+                    <div class="position-relative">
+                        <textarea 
+                            id="resultPrompt" 
+                            class="form-control" 
+                            rows="6" 
+                            readonly></textarea>
+                        <button 
+                            type="button" 
+                            class="btn btn-outline-primary btn-sm position-absolute top-0 end-0 m-2" 
+                            id="copyBtn"
+                            title="Sao chép">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary" id="usePromptBtn">
+                        <i class="fas fa-image me-1"></i>Tạo ảnh với prompt này
+                    </button>
+                    <button type="button" class="btn btn-outline-success" id="savePromptBtn">
+                        <i class="fas fa-save me-1"></i>Đã lưu
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Trạng thái -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>Trạng thái
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="statusSection" style="display: none;">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <small class="text-muted">Tiến trình</small>
+                            <small class="text-muted" id="progressText">0%</small>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info" id="statusMessage">
+                        <i class="fas fa-spinner fa-spin me-2"></i>Đang khởi tạo AI...
+                    </div>
+                </div>
+                
+                <!-- Hướng dẫn -->
+                <div id="instructionSection">
+                    <h6>Hướng dẫn:</h6>
+                    <ol class="small">
+                        <li>Nhập chủ đề bằng tiếng Việt</li>
+                        <li>Nhấn "Tạo prompt" và chờ AI xử lý</li>
+                        <li>AI sẽ sinh prompt tiếng Anh chi tiết</li>
+                        <li>Sử dụng prompt để tạo ảnh</li>
+                    </ol>
+                    
+                    <div class="alert alert-warning">
+                        <small>
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            Đảm bảo đã cấu hình API key Gemini trong mục Cài đặt
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ví dụ chủ đề -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>Ví dụ chủ đề
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="topic-examples">
+                    <div class="mb-2">
+                        <button class="btn btn-outline-success btn-sm w-100 text-start example-btn" 
+                                data-topic="con mèo dễ thương">
+                            Con mèo dễ thương
+                        </button>
+                    </div>
+                    <div class="mb-2">
+                        <button class="btn btn-outline-success btn-sm w-100 text-start example-btn" 
+                                data-topic="phong cảnh hoàng hôn">
+                            Phong cảnh hoàng hôn
+                        </button>
+                    </div>
+                    <div class="mb-2">
+                        <button class="btn btn-outline-success btn-sm w-100 text-start example-btn" 
+                                data-topic="robot futuristic">
+                            Robot futuristic
+                        </button>
+                    </div>
+                    <div class="mb-2">
+                        <button class="btn btn-outline-success btn-sm w-100 text-start example-btn" 
+                                data-topic="phòng khách hiện đại">
+                            Phòng khách hiện đại
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Prompt gần đây -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-history me-2"></i>Prompt gần đây
+                </h6>
+            </div>
+            <div class="card-body">
+                <div id="recentPrompts">
+                    <!-- Recent prompts will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentTaskId = null;
+    let statusCheckInterval = null;
+    let currentPromptData = null;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('promptForm');
+        const generateBtn = document.getElementById('generateBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const usePromptBtn = document.getElementById('usePromptBtn');
+        const exampleBtns = document.querySelectorAll('.example-btn');
+        
+        // Load recent prompts
+        loadRecentPrompts();
+        
+        // Handle form submission
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            generatePrompt();
+        });
+        
+        // Handle clear button
+        clearBtn.addEventListener('click', function() {
+            form.reset();
+            hideStatus();
+            hideResult();
+        });
+        
+        // Handle copy button
+        copyBtn.addEventListener('click', function() {
+            const promptText = document.getElementById('resultPrompt');
+            promptText.select();
+            document.execCommand('copy');
+            
+            // Show feedback
+            this.innerHTML = '<i class="fas fa-check"></i>';
+            setTimeout(() => {
+                this.innerHTML = '<i class="fas fa-copy"></i>';
+            }, 2000);
+        });
+        
+        // Handle use prompt button
+        usePromptBtn.addEventListener('click', function() {
+            const prompt = document.getElementById('resultPrompt').value;
+            // Redirect to image generation page with prompt
+            const url = new URL('/generate-image', window.location.origin);
+            url.searchParams.set('prompt', prompt);
+            window.open(url.toString(), '_blank');
+        });
+        
+        // Handle example topics
+        exampleBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.getElementById('topic').value = this.dataset.topic;
+            });
+        });
+    });
+    
+    function generatePrompt() {
+        const topic = document.getElementById('topic').value.trim();
+        
+        if (!topic) {
+            alert('Vui lòng nhập chủ đề!');
+            return;
+        }
+        
+        // Show loading state
+        showStatus();
+        document.getElementById('generateBtn').disabled = true;
+        document.getElementById('generateBtn').innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang tạo...';
+        
+        // Start prompt generation
+        fetch('/api/generate-prompt', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ topic: topic })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            
+            currentTaskId = result.task_id;
+            checkTaskStatus();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showError(error.message);
+            resetForm();
+        });
+    }
+    
+    function checkTaskStatus() {
+        if (!currentTaskId) return;
+        
+        statusCheckInterval = setInterval(() => {
+            fetch(`/api/task-status/${currentTaskId}`)
+                .then(response => response.json())
+                .then(status => {
+                    updateProgress(status.progress || 0, status.message || 'Đang xử lý...');
+                    
+                    if (status.status === 'completed') {
+                        clearInterval(statusCheckInterval);
+                        showResult(status.results[0], status.filename);
+                        resetForm();
+                    } else if (status.status === 'error') {
+                        clearInterval(statusCheckInterval);
+                        showError(status.message || 'Có lỗi xảy ra');
+                        resetForm();
+                    }
+                })
+                .catch(error => {
+                    console.error('Status check error:', error);
+                });
+        }, 2000);
+    }
+    
+    function showStatus() {
+        document.getElementById('instructionSection').style.display = 'none';
+        document.getElementById('statusSection').style.display = 'block';
+    }
+    
+    function hideStatus() {
+        document.getElementById('instructionSection').style.display = 'block';
+        document.getElementById('statusSection').style.display = 'none';
+    }
+    
+    function showResult(promptData, filename) {
+        currentPromptData = promptData;
+        
+        document.getElementById('resultTopic').textContent = promptData.topic || '';
+        document.getElementById('resultPrompt').value = promptData.content || '';
+        document.getElementById('resultCard').style.display = 'block';
+        
+        // Update status message
+        document.getElementById('statusMessage').innerHTML = `<i class="fas fa-check-circle text-success me-2"></i>Hoàn thành! Prompt đã được tạo và lưu`;
+        
+        // Reload recent prompts
+        loadRecentPrompts();
+    }
+    
+    function hideResult() {
+        document.getElementById('resultCard').style.display = 'none';
+        currentPromptData = null;
+    }
+    
+    function updateProgress(progress, message) {
+        document.getElementById('progressBar').style.width = progress + '%';
+        document.getElementById('progressText').textContent = progress + '%';
+        document.getElementById('statusMessage').innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i>${message}`;
+    }
+    
+    function showError(message) {
+        document.getElementById('statusMessage').innerHTML = `<i class="fas fa-exclamation-circle text-danger me-2"></i>Lỗi: ${message}`;
+        document.getElementById('statusMessage').className = 'alert alert-danger';
+    }
+    
+    function resetForm() {
+        document.getElementById('generateBtn').disabled = false;
+        document.getElementById('generateBtn').innerHTML = '<i class="fas fa-magic me-1"></i>Tạo prompt';
+        currentTaskId = null;
+        if (statusCheckInterval) {
+            clearInterval(statusCheckInterval);
+            statusCheckInterval = null;
+        }
+    }
+    
+    function loadRecentPrompts() {
+        fetch('/api/prompts')
+            .then(r => r.json())
+            .then(prompts => {
+                const container = document.getElementById('recentPrompts');
+                container.innerHTML = '';
+                
+                prompts.slice(0, 5).forEach(prompt => {
+                    const div = document.createElement('div');
+                    div.className = 'mb-2 p-2 bg-light rounded cursor-pointer';
+                    div.style.cursor = 'pointer';
+                    div.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <strong class="text-success small">${prompt.topic || 'Không có chủ đề'}</strong>
+                                <p class="mb-1 text-muted" style="font-size: 0.8rem;">${prompt.content.substring(0, 60)}...</p>
+                                <small class="text-muted" style="font-size: 0.7rem;">${prompt.created}</small>
+                            </div>
+                        </div>
+                    `;
+                    
+                    div.addEventListener('click', function() {
+                        document.getElementById('resultTopic').textContent = prompt.topic || '';
+                        document.getElementById('resultPrompt').value = prompt.content || '';
+                        document.getElementById('resultCard').style.display = 'block';
+                        currentPromptData = prompt;
+                    });
+                    
+                    container.appendChild(div);
+                });
+                
+                if (prompts.length === 0) {
+                    container.innerHTML = '<div class="text-center text-muted"><small>Chưa có prompt nào</small></div>';
+                }
+            })
+            .catch(console.error);
+    }
+    
+    // Check for prompt parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const promptParam = urlParams.get('prompt');
+    if (promptParam) {
+        document.getElementById('resultPrompt').value = promptParam;
+        document.getElementById('resultCard').style.display = 'block';
+    }
+</script>
+{% endblock %}

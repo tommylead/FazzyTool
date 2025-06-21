@@ -1,0 +1,564 @@
+{% extends "base.html" %}
+
+{% block title %}Tạo ảnh hàng loạt từ file prompt - FazzyTool{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex align-items-center mb-4">
+            <i class="fas fa-file-image fa-2x text-warning me-3"></i>
+            <div>
+                <h2 class="text-white mb-0">Tạo ảnh hàng loạt từ file prompt</h2>
+                <p class="text-white-50 mb-0">Upload file .txt chứa các prompt có sẵn và tạo ảnh hàng loạt</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Form upload file -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-upload me-2"></i>Upload file prompt
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="promptFile" class="form-label">Chọn file .txt <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control" id="promptFile" accept=".txt" required>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            File .txt với format: "Prompt 1", "Prompt 2", "Prompt 3"... (xem ví dụ bên phải)
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="showBrowser">
+                            <label class="form-check-label" for="showBrowser">
+                                Hiển thị trình duyệt (để debug)
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-secondary me-md-2" id="clearBtn">
+                            <i class="fas fa-eraser me-1"></i>Xóa file
+                        </button>
+                        <button type="submit" class="btn btn-info me-md-2" id="previewBtn">
+                            <i class="fas fa-eye me-1"></i>Xem trước
+                        </button>
+                        <button type="button" class="btn btn-warning" id="generateBtn" disabled>
+                            <i class="fas fa-play me-1"></i>Bắt đầu tạo ảnh
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Preview prompts -->
+        <div class="card mt-3" id="previewCard" style="display: none;">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list me-2"></i>Danh sách prompt đã phân tích
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="promptsList">
+                    <!-- Parsed prompts will appear here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Log real-time -->
+        <div class="card mt-3" id="logCard" style="display: none;">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-terminal me-2"></i>Log xử lý
+                    </h5>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="clearLogBtn">
+                        <i class="fas fa-trash me-1"></i>Xóa log
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="logContainer" class="bg-dark text-light p-3 rounded" style="height: 300px; overflow-y: auto; font-family: monospace; font-size: 0.9em;">
+                    <!-- Logs will appear here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Kết quả -->
+        <div class="card mt-3" id="resultCard" style="display: none;">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-images me-2"></i>Kết quả tạo ảnh
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="resultSummary" class="mb-3">
+                    <!-- Summary will appear here -->
+                </div>
+                <div id="resultGallery" class="row">
+                    <!-- Images will appear here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Trạng thái -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>Trạng thái
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="statusSection" style="display: none;">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <small class="text-muted">Tiến trình chung</small>
+                            <small class="text-muted" id="progressText">0%</small>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" id="progressBar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">Prompt hiện tại:</small>
+                        <div id="currentPrompt" class="fw-bold text-truncate">-</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">Tiến độ:</small>
+                        <div id="promptProgress">0 / 0 prompt</div>
+                    </div>
+                    
+                    <div class="alert alert-info" id="statusMessage">
+                        <i class="fas fa-spinner fa-spin me-2"></i>Đang khởi tạo...
+                    </div>
+                    
+                    <button type="button" class="btn btn-outline-danger btn-sm w-100" id="stopBtn" style="display: none;">
+                        <i class="fas fa-stop me-1"></i>Dừng xử lý
+                    </button>
+                </div>
+                
+                <!-- Hướng dẫn -->
+                <div id="instructionSection">
+                    <h6>Hướng dẫn:</h6>
+                    <ol class="small">
+                        <li>Tạo file .txt chứa các prompt</li>
+                        <li>Upload file và nhấn "Xem trước"</li>
+                        <li>Kiểm tra danh sách prompt đã phân tích</li>
+                        <li>Nhấn "Bắt đầu tạo ảnh" và chờ xử lý</li>
+                        <li>Theo dõi log để biết tiến trình</li>
+                    </ol>
+                    
+                    <div class="alert alert-warning">
+                        <small>
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            Đảm bảo đã cấu hình cookie Freepik trong mục Cài đặt
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Thống kê file -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>Thống kê
+                </h6>
+            </div>
+            <div class="card-body">
+                <div id="statsSection" style="display: none;">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border-end">
+                                <div class="h5 mb-1" id="totalPrompts">0</div>
+                                <small class="text-muted">Prompt</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="h5 mb-1" id="totalImages">0</div>
+                            <small class="text-muted">Ảnh tạo</small>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="text-center">
+                        <div class="h6 mb-1" id="estimatedTime">0 phút</div>
+                        <small class="text-muted">Thời gian ước tính</small>
+                    </div>
+                </div>
+                <div id="noStatsSection">
+                    <p class="text-muted small text-center">Chưa có dữ liệu</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Format file mẫu -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-file-text me-2"></i>Format file mẫu
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="bg-light p-3 rounded">
+                    <code style="font-size: 0.8em;">
+                        Prompt 1<br>
+                        A cute cat sitting in a garden<br>
+                        <br>
+                        Prompt 2<br>
+                        Beautiful sunset over the ocean<br>
+                        <br>
+                        Prompt 3<br>
+                        Futuristic robot in cyberpunk city<br>
+                        <br>
+                        Prompt 4<br>
+                        Modern living room with minimalist design
+                    </code>
+                </div>
+                <div class="mt-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm w-100" id="downloadSampleBtn">
+                        <i class="fas fa-download me-1"></i>Tải file mẫu
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentTaskId = null;
+    let statusCheckInterval = null;
+    let isProcessing = false;
+    let parsedPrompts = [];
+    let fileContent = '';
+
+    // Upload file và preview
+    document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const fileInput = document.getElementById('promptFile');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            alert('Vui lòng chọn file');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        try {
+            const response = await fetch('/api/upload-prompt-file', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                fileContent = data.file_content;
+                parsedPrompts = data.parsed_prompts;
+                
+                showPreview(data);
+                updateStats(data);
+                
+                document.getElementById('generateBtn').disabled = false;
+            } else {
+                throw new Error(data.error || 'Lỗi upload file');
+            }
+            
+        } catch (error) {
+            alert('Lỗi: ' + error.message);
+        }
+    });
+
+    function showPreview(data) {
+        const previewCard = document.getElementById('previewCard');
+        const promptsList = document.getElementById('promptsList');
+        
+        previewCard.style.display = 'block';
+        
+        let html = `<div class="alert alert-success">
+            <h6><i class="fas fa-check-circle me-2"></i>Phân tích thành công!</h6>
+            <p class="mb-0">Tìm thấy <strong>${data.total_prompts}</strong> prompt hợp lệ</p>
+        </div>`;
+        
+        if (data.parsed_prompts.length > 0) {
+            html += '<div class="list-group">';
+            data.parsed_prompts.forEach((prompt, index) => {
+                html += `
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">${prompt.name}</h6>
+                            <small class="text-muted">4 ảnh</small>
+                        </div>
+                        <p class="mb-1">${prompt.content}</p>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+        
+        promptsList.innerHTML = html;
+    }
+
+    function updateStats(data) {
+        document.getElementById('noStatsSection').style.display = 'none';
+        document.getElementById('statsSection').style.display = 'block';
+        
+        const totalPrompts = data.total_prompts;
+        const totalImages = totalPrompts * 4; // 4 ảnh mỗi prompt
+        const estimatedMinutes = Math.ceil(totalPrompts * 3); // 3 phút per prompt
+        
+        document.getElementById('totalPrompts').textContent = totalPrompts;
+        document.getElementById('totalImages').textContent = totalImages;
+        document.getElementById('estimatedTime').textContent = estimatedMinutes + ' phút';
+    }
+
+    // Bắt đầu tạo ảnh
+    document.getElementById('generateBtn').addEventListener('click', async function() {
+        if (isProcessing) {
+            alert('Đang xử lý batch khác, vui lòng chờ hoàn thành');
+            return;
+        }
+        
+        if (!fileContent) {
+            alert('Vui lòng upload file trước');
+            return;
+        }
+        
+        try {
+            isProcessing = true;
+            showProcessingUI();
+            
+            const showBrowser = document.getElementById('showBrowser').checked;
+            
+            const response = await fetch('/api/batch-prompts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    file_content: fileContent,
+                    show_browser: showBrowser
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                currentTaskId = data.task_id;
+                startStatusChecking();
+                
+                document.getElementById('statusMessage').innerHTML = 
+                    '<i class="fas fa-spinner fa-spin me-2"></i>Đã bắt đầu xử lý ' + data.total_prompts + ' prompt...';
+            } else {
+                throw new Error(data.error || 'Lỗi không xác định');
+            }
+            
+        } catch (error) {
+            alert('Lỗi: ' + error.message);
+            hideProcessingUI();
+            isProcessing = false;
+        }
+    });
+
+    // Clear buttons
+    document.getElementById('clearBtn').addEventListener('click', function() {
+        document.getElementById('promptFile').value = '';
+        document.getElementById('previewCard').style.display = 'none';
+        document.getElementById('generateBtn').disabled = true;
+        document.getElementById('statsSection').style.display = 'none';
+        document.getElementById('noStatsSection').style.display = 'block';
+        fileContent = '';
+        parsedPrompts = [];
+    });
+
+    document.getElementById('clearLogBtn').addEventListener('click', function() {
+        document.getElementById('logContainer').innerHTML = '';
+    });
+
+    // Download sample file
+    document.getElementById('downloadSampleBtn').addEventListener('click', function() {
+        const sampleContent = `Prompt 1
+A cute cat sitting in a garden, watercolor style, soft lighting
+
+Prompt 2
+Beautiful sunset over the ocean, vibrant colors, peaceful atmosphere
+
+Prompt 3
+Futuristic robot in cyberpunk city, neon lights, high-tech environment
+
+Prompt 4
+Modern living room with minimalist design, clean lines, natural light
+
+Prompt 5
+Delicious Vietnamese pho bowl, traditional ingredients, appetizing presentation`;
+
+        const blob = new Blob([sampleContent], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'sample_prompts.txt';
+        a.click();
+        window.URL.revokeObjectURL(url);
+    });
+
+    function showProcessingUI() {
+        document.getElementById('instructionSection').style.display = 'none';
+        document.getElementById('statusSection').style.display = 'block';
+        document.getElementById('logCard').style.display = 'block';
+        document.getElementById('generateBtn').disabled = true;
+        document.getElementById('stopBtn').style.display = 'block';
+    }
+
+    function hideProcessingUI() {
+        document.getElementById('instructionSection').style.display = 'block';
+        document.getElementById('statusSection').style.display = 'none';
+        document.getElementById('generateBtn').disabled = false;
+        document.getElementById('stopBtn').style.display = 'none';
+        isProcessing = false;
+    }
+
+    function startStatusChecking() {
+        if (statusCheckInterval) {
+            clearInterval(statusCheckInterval);
+        }
+        
+        statusCheckInterval = setInterval(async function() {
+            if (!currentTaskId) return;
+            
+            try {
+                const response = await fetch(`/api/task-status/${currentTaskId}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    updateUI(data);
+                    
+                    if (data.status === 'completed' || data.status === 'error') {
+                        clearInterval(statusCheckInterval);
+                        statusCheckInterval = null;
+                        hideProcessingUI();
+                        
+                        if (data.status === 'completed') {
+                            showResults(data);
+                        }
+                    }
+                } else {
+                    console.error('Error checking status:', data.error);
+                }
+            } catch (error) {
+                console.error('Status check failed:', error);
+            }
+        }, 2000);
+    }
+
+    function updateUI(data) {
+        // Update progress bar
+        document.getElementById('progressBar').style.width = data.progress + '%';
+        document.getElementById('progressText').textContent = data.progress + '%';
+        
+        // Update current prompt
+        if (data.current_prompt) {
+            document.getElementById('currentPrompt').textContent = data.current_prompt;
+            document.getElementById('currentPrompt').title = data.current_prompt; // Tooltip for full text
+        }
+        
+        // Update prompt progress
+        if (data.completed_prompts !== undefined && data.total_prompts !== undefined) {
+            document.getElementById('promptProgress').textContent = 
+                data.completed_prompts + ' / ' + data.total_prompts + ' prompt';
+        }
+        
+        // Update status message
+        document.getElementById('statusMessage').innerHTML = 
+            '<i class="fas fa-spinner fa-spin me-2"></i>' + data.message;
+        
+        // Update logs
+        if (data.logs && data.logs.length > 0) {
+            const logContainer = document.getElementById('logContainer');
+            
+            // Only add new logs
+            const currentLogCount = logContainer.children.length;
+            const newLogs = data.logs.slice(currentLogCount);
+            
+            newLogs.forEach(log => {
+                const logDiv = document.createElement('div');
+                logDiv.textContent = log;
+                logDiv.className = 'mb-1';
+                
+                // Color coding for different log types
+                if (log.includes('✅')) {
+                    logDiv.className += ' text-success';
+                } else if (log.includes('❌')) {
+                    logDiv.className += ' text-danger';
+                } else if (log.includes('🔄')) {
+                    logDiv.className += ' text-info';
+                } else if (log.includes('⏳')) {
+                    logDiv.className += ' text-warning';
+                } else if (log.includes('🎉')) {
+                    logDiv.className += ' text-success fw-bold';
+                }
+                
+                logContainer.appendChild(logDiv);
+            });
+            
+            // Auto scroll to bottom
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+    }
+
+    function showResults(data) {
+        if (data.results && data.results.length > 0) {
+            document.getElementById('resultCard').style.display = 'block';
+            
+            const totalImages = data.results.reduce((sum, result) => sum + result.files.length, 0);
+            document.getElementById('resultSummary').innerHTML = `
+                <div class="alert alert-success">
+                    <h6><i class="fas fa-check-circle me-2"></i>Hoàn thành!</h6>
+                    <p class="mb-0">Đã tạo thành công <strong>${totalImages}</strong> ảnh từ <strong>${data.results.length}</strong> prompt.</p>
+                </div>
+            `;
+            
+            // Show gallery
+            const gallery = document.getElementById('resultGallery');
+            gallery.innerHTML = '';
+            
+            data.results.forEach((result, index) => {
+                const promptDiv = document.createElement('div');
+                promptDiv.className = 'col-12 mb-4';
+                promptDiv.innerHTML = `
+                    <h6>${result.prompt_name}</h6>
+                    <p class="text-muted small">${result.prompt_content}</p>
+                    <div class="row">
+                        ${result.files.map(file => `
+                            <div class="col-md-3 mb-2">
+                                <div class="card">
+                                    <img src="/output/${file.split('/').pop()}" class="card-img-top" style="height: 150px; object-fit: cover;" alt="Generated image">
+                                    <div class="card-body p-2">
+                                        <small class="text-muted">${file.split('/').pop()}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                gallery.appendChild(promptDiv);
+            });
+        }
+    }
+</script>
+{% endblock %} 

@@ -25,7 +25,7 @@ class BatchProcessor:
             'max_retries': 3,
             'max_concurrent': 2,
             'delay_between_requests': 5,
-            'browser': 'firefox',
+            'browser': 'chrome',
             'headless': False,
             'output_folder': 'output',
             # Cấu hình mới cho image generation

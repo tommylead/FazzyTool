@@ -5,4 +5,5 @@ python-dotenv==1.0.0
 requests==2.31.0
 click==8.1.7
 colorama==0.4.6
-tqdm==4.66.1 
+tqdm==4.66.1
+flask==3.0.0 
