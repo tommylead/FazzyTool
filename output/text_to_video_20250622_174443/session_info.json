@@ -1,0 +1,12 @@
+{
+  "session_type": "text_to_video",
+  "timestamp": "2025-06-22T17:44:43.234392",
+  "prompt": "A bat fly in dark",
+  "duration": "5s",
+  "ratio": "16:9",
+  "model": "kling_2_1",
+  "status": "completed",
+  "session_created": "2025-06-22T17:45:28.073429",
+  "session_folder": "text_to_video_20250622_174443",
+  "output_video": "video_output_20250622_174525.mp4"
+}

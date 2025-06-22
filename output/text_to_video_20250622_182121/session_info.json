@@ -1,0 +1,10 @@
+{
+  "type": "text_to_video",
+  "prompt": "A cute puppy running happily in a green meadow, tail wagging, sunny day",
+  "model": "kling_master_2_1",
+  "duration": "5s",
+  "ratio": "16:9",
+  "timestamp": "2025-06-22T18:21:21.664878",
+  "status": "failed",
+  "error": "Không thể tải video"
+}

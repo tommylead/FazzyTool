@@ -926,238 +926,102 @@ def sessions():
 @click.option('--prompt', '-p', default='test cookie với prompt debug', help='Prompt để test (mặc định: test cookie với prompt debug)')
 @click.option('--show-browser/--headless', default=True, help='Hiển thị trình duyệt để debug (mặc định: True)')
 def debug_cookie(prompt, show_browser):
-    """Debug chi tiết việc sử dụng cookie Chrome để nhập prompt"""
-    print(f"{Colors.BLUE}🔧 Bắt đầu debug cookie Chrome...{Colors.ENDC}")
+    """Test cookie và debug các vấn đề authentication"""
+    print(f"{Colors.BLUE}🔧 Chế độ debug cookie và authentication{Colors.ENDC}")
+    print(f"📝 Test prompt: {prompt}")
+    
+    try:
+        cookies = load_cookie_from_template()
+        if not cookies:
+            print(f"{Colors.FAIL}❌ Không thể load cookie từ cookie_template.txt{Colors.ENDC}")
+            return
+            
+        print(f"{Colors.GREEN}✅ Load được {len(cookies)} cookies{Colors.ENDC}")
+        
+        # Test với image generator
+        generator = FreepikImageGenerator(headless=not show_browser)
+        cookie_string = json.dumps(cookies)
+        
+        print(f"{Colors.BLUE}🎨 Testing image generation...{Colors.ENDC}")
+        
+        # Tạo prompt item debug
+        prompt_item = {
+            'content': prompt,
+            'num_images': 1,
+            'download_count': 1,
+            'filename_prefix': 'debug_test'
+        }
+        
+        result = process_single_image(prompt_item, show_browser, cookies)
+        
+        if result:
+            print(f"{Colors.GREEN}✅ Debug thành công! Ảnh: {result}{Colors.ENDC}")
+        else:
+            print(f"{Colors.FAIL}❌ Debug thất bại{Colors.ENDC}")
+            
+    except Exception as e:
+        print(f"{Colors.FAIL}❌ Lỗi debug: {e}{Colors.ENDC}")
+        import traceback
+        traceback.print_exc()
+
+
+@cli.command()
+@click.option('--prompt', '-p', default='A cute cat playing with a ball', help='Prompt để test video (mặc định: A cute cat playing with a ball)')
+@click.option('--duration', default='5s', type=click.Choice(['5s', '10s']), help='Thời lượng video (mặc định: 5s)')
+@click.option('--ratio', default='1:1', type=click.Choice(['1:1', '16:9', '9:16']), help='Tỉ lệ khung hình (mặc định: 1:1)')
+@click.option('--model', default='kling_master_2_1', type=click.Choice(['kling_2_1', 'kling_master_2_1']), help='Model AI để tạo video (mặc định: kling_master_2_1)')
+@click.option('--show-browser/--headless', default=True, help='Hiển thị trình duyệt để debug (mặc định: True)')
+def test_video(prompt, duration, ratio, model, show_browser):
+    """Test tạo video nhanh với prompt đơn giản"""
+    print(f"{Colors.BLUE}🎬 Test Video Generation{Colors.ENDC}")
+    print(f"📝 Prompt: {prompt}")
+    print(f"⏱️ Duration: {duration}")
+    print(f"📐 Ratio: {ratio}")
+    print(f"🤖 Model: {model}")
     
     try:
         # Load cookies
         cookies = load_cookie_from_template()
         if not cookies:
-            print(f"{Colors.FAIL}❌ Không có cookie trong cookie_template.txt{Colors.ENDC}")
-            print(f"{Colors.WARNING}Vui lòng dán cookie vào file cookie_template.txt theo hướng dẫn{Colors.ENDC}")
-            return
-        
-        print(f"{Colors.GREEN}✅ Đã load {len(cookies)} cookies từ template{Colors.ENDC}")
-        
-        # Tạo generator với browser hiển thị để debug
-        from browser_image import FreepikImageGenerator
-        generator = FreepikImageGenerator(headless=not show_browser, output_dir="output")
-        
-        # Debug bằng cách chỉ test phần nhập prompt
-        print(f"{Colors.BLUE}🧪 Test prompt: '{prompt}'{Colors.ENDC}")
-        
-        # Sử dụng playwright manual để debug
-        from playwright.sync_api import sync_playwright
-        import time
-        
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=not show_browser)
-            context = browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            )
-            page = context.new_page()
+            print(f"{Colors.FAIL}❌ Không thể load cookie từ cookie_template.txt{Colors.ENDC}")
+            sys.exit(1)
             
-            try:
-                # Set cookies
-                context.add_cookies(cookies)
-                print(f"{Colors.GREEN}🍪 Đã set cookies{Colors.ENDC}")
-                
-                # Thử các URL Freepik khác nhau
-                urls_to_try = [
-                    "https://www.freepik.com/pikaso/ai-image-generator",
-                    "https://www.freepik.com/pikaso",
-                    "https://www.freepik.com/ai/image-generator",
-                    "https://www.freepik.com/generate/image"
-                ]
-                
-                current_url = None
-                for url in urls_to_try:
-                    try:
-                        print(f"{Colors.BLUE}🌐 Thử URL: {url}...{Colors.ENDC}")
-                        page.goto(url, wait_until="networkidle")
-                        current_url = url
-                        break
-                    except Exception as e:
-                        print(f"{Colors.WARNING}⚠️ URL {url} thất bại: {e}{Colors.ENDC}")
-                        continue
-                
-                if not current_url:
-                    print(f"{Colors.FAIL}❌ Không thể vào bất kỳ URL nào!{Colors.ENDC}")
-                    return
-                
-                # Chờ trang load
-                time.sleep(3)
-                final_url = page.url
-                print(f"{Colors.GREEN}📄 Trang đã load xong: {final_url}{Colors.ENDC}")
-                
-                # Debug: Show page title và một số thông tin
-                try:
-                    title = page.title()
-                    print(f"{Colors.BLUE}🏷️ Tiêu đề trang: {title}{Colors.ENDC}")
-                    
-                    # Check nếu có thông báo đăng nhập
-                    login_indicators = ["Sign up", "Log in", "Login", "Register"]
-                    for indicator in login_indicators:
-                        if page.query_selector(f"text={indicator}"):
-                            print(f"{Colors.WARNING}⚠️ Phát hiện: {indicator} - Có thể cần đăng nhập{Colors.ENDC}")
-                    
-                    # List tất cả input/textarea elements để debug
-                    all_inputs = page.query_selector_all("input, textarea, [contenteditable='true']")
-                    print(f"{Colors.BLUE}🔍 Tìm thấy {len(all_inputs)} input elements:{Colors.ENDC}")
-                    
-                    for i, input_el in enumerate(all_inputs[:10]):  # Chỉ show 10 cái đầu
-                        try:
-                            tag = input_el.evaluate("el => el.tagName")
-                            placeholder = input_el.evaluate("el => el.placeholder || ''")
-                            el_type = input_el.evaluate("el => el.type || ''")
-                            visible = input_el.is_visible()
-                            print(f"  {i+1}. {tag} type='{el_type}' placeholder='{placeholder}' visible={visible}")
-                        except:
-                            print(f"  {i+1}. [Error getting info]")
-                            
-                except Exception as e:
-                    print(f"{Colors.WARNING}⚠️ Lỗi khi debug page info: {e}{Colors.ENDC}")
-                
-                print(f"{Colors.GREEN}📄 Hoàn thành debug page info{Colors.ENDC}")
-                
-                # Tìm ô input với nhiều selector hơn
-                print(f"{Colors.BLUE}🔍 Tìm ô nhập prompt...{Colors.ENDC}")
-                prompt_selectors = [
-                    # Specific Freepik selectors
-                    "textarea[placeholder*='Describe what you want to generate']",
-                    "textarea[placeholder*='prompt']",
-                    "textarea[placeholder*='describe']", 
-                    "input[placeholder*='prompt']",
-                    "input[placeholder*='describe']",
-                    "input[placeholder*='Describe what you want']",
-                    
-                    # Data attributes
-                    "[data-testid*='prompt']",
-                    "[data-testid*='input']",
-                    "[data-testid*='textarea']",
-                    "[data-cy*='prompt']",
-                    "[data-cy*='input']",
-                    
-                    # Class names
-                    ".prompt-input",
-                    ".input-prompt",
-                    ".ai-prompt",
-                    ".generate-input",
-                    
-                    # Generic selectors
-                    "textarea",
-                    "input[type='text']",
-                    "[role='textbox']",
-                    "[contenteditable='true']",
-                    
-                    # Form elements
-                    "form textarea",
-                    "form input[type='text']"
-                ]
-                
-                found_selector = None
-                for selector in prompt_selectors:
-                    try:
-                        element = page.query_selector(selector)
-                        if element and element.is_visible():
-                            print(f"{Colors.GREEN}✅ Tìm thấy ô input: {selector}{Colors.ENDC}")
-                            found_selector = selector
-                            break
-                    except:
-                        continue
-                
-                if not found_selector:
-                    print(f"{Colors.FAIL}❌ KHÔNG TÌM THẤY Ô INPUT!{Colors.ENDC}")
-                    page.screenshot(path="debug_no_input.png")
-                    print(f"{Colors.WARNING}📸 Screenshot đã lưu: debug_no_input.png{Colors.ENDC}")
-                    return
-                
-                # Test nhập prompt bằng nhiều cách
-                print(f"{Colors.BLUE}📝 Test nhập prompt: '{prompt}'...{Colors.ENDC}")
-                
-                # Method 1: Click + Fill
-                try:
-                    page.click(found_selector, timeout=10000)
-                    time.sleep(0.5)
-                    page.fill(found_selector, prompt)
-                    current_value = page.input_value(found_selector)
-                    print(f"{Colors.GREEN}✅ Method 1 thành công: '{current_value}'{Colors.ENDC}")
-                except Exception as e:
-                    print(f"{Colors.FAIL}❌ Method 1 thất bại: {e}{Colors.ENDC}")
-                    
-                    # Method 2: JavaScript force
-                    try:
-                        js_code = f"""
-                        const element = document.querySelector('{found_selector}');
-                        if (element) {{
-                            element.focus();
-                            element.value = '{prompt}';
-                            element.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                            element.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                        }}
-                        """
-                        page.evaluate(js_code)
-                        current_value = page.evaluate(f"document.querySelector('{found_selector}').value")
-                        print(f"{Colors.GREEN}✅ Method 2 (JS) thành công: '{current_value}'{Colors.ENDC}")
-                    except Exception as e2:
-                        print(f"{Colors.FAIL}❌ Method 2 (JS) cũng thất bại: {e2}{Colors.ENDC}")
-                
-                # Screenshot sau khi nhập
-                page.screenshot(path="debug_after_input.png")
-                print(f"{Colors.GREEN}📸 Screenshot sau khi nhập: debug_after_input.png{Colors.ENDC}")
-                
-                # Tìm nút generate
-                print(f"{Colors.BLUE}🔍 Tìm nút Generate...{Colors.ENDC}")
-                generate_selectors = [
-                    "button[data-testid*='generate']",
-                    "button:has-text('Generate')",
-                    "button:has-text('Create')",
-                    ".generate-btn",
-                    "input[type='submit']"
-                ]
-                
-                generate_found = False
-                for selector in generate_selectors:
-                    try:
-                        element = page.query_selector(selector)
-                        if element and element.is_visible():
-                            print(f"{Colors.GREEN}✅ Tìm thấy nút generate: {selector}{Colors.ENDC}")
-                            generate_found = True
-                            
-                            # Highlight nút để xem
-                            page.evaluate(f"""
-                                document.querySelector('{selector}').style.border = '3px solid red';
-                            """)
-                            break
-                    except:
-                        continue
-                
-                if not generate_found:
-                    print(f"{Colors.FAIL}❌ KHÔNG TÌM THẤY NÚT GENERATE!{Colors.ENDC}")
-                
-                # Screenshot cuối
-                page.screenshot(path="debug_final.png")
-                print(f"{Colors.GREEN}📸 Screenshot cuối: debug_final.png{Colors.ENDC}")
-                
-                print(f"\n{Colors.BOLD}🎯 TỔNG KẾT DEBUG:{Colors.ENDC}")
-                print(f"  ✅ Cookies: {len(cookies)} cookies đã set")
-                print(f"  ✅ Input field: {'Tìm thấy' if found_selector else 'KHÔNG TÌM THẤY'}")
-                print(f"  ✅ Generate button: {'Tìm thấy' if generate_found else 'KHÔNG TÌM THẤY'}")
-                print(f"  📁 Screenshots: debug_*.png")
-                
-                if show_browser:
-                    input(f"\n{Colors.WARNING}⏸️ Nhấn Enter để đóng browser...{Colors.ENDC}")
-                
-            except Exception as e:
-                print(f"{Colors.FAIL}❌ Lỗi debug: {e}{Colors.ENDC}")
-                page.screenshot(path="debug_error.png")
-                
-            finally:
-                browser.close()
-                
+        print(f"{Colors.GREEN}✅ Load được {len(cookies)} cookies{Colors.ENDC}")
+        
+        # Tạo video generator
+        output_dir = create_output_dir()
+        video_generator = FreepikVideoGenerator(headless=not show_browser, output_dir=output_dir)
+        
+        cookie_string = json.dumps(cookies)
+        
+        print(f"{Colors.BLUE}🚀 Bắt đầu test tạo video...{Colors.ENDC}")
+        
+        # Text-to-Video
+        video_path = video_generator.generate_video(
+            prompt=prompt,
+            cookie_string=cookie_string,
+            duration=duration,
+            ratio=ratio,
+            model=model
+        )
+        
+        if video_path:
+            print(f"\n{Colors.GREEN}{Colors.BOLD}🎉 TEST THÀNH CÔNG!{Colors.ENDC}")
+            print(f"{Colors.GREEN}📹 Video đã được tạo: {video_path}{Colors.ENDC}")
+            
+            # Hiển thị thông tin session
+            session_dir = os.path.dirname(video_path)
+            print(f"📁 Session folder: {session_dir}")
+            
+        else:
+            print(f"{Colors.FAIL}❌ TEST THẤT BẠI!{Colors.ENDC}")
+            sys.exit(1)
+            
     except Exception as e:
-        print(f"{Colors.FAIL}❌ Lỗi tổng quát: {e}{Colors.ENDC}")
+        print(f"{Colors.FAIL}❌ Lỗi test video: {e}{Colors.ENDC}")
+        import traceback
         traceback.print_exc()
+        sys.exit(1)
 
 
 # ========================================================================================
@@ -1273,133 +1137,151 @@ def image(file, topic, prompt, num_images, download_count, filename_prefix, show
 @click.option('--image', '-i', type=str, help='Đường dẫn ảnh để tạo video (image-to-video)')
 @click.option('--duration', default='5s', type=click.Choice(['5s', '10s']), help='Thời lượng video (mặc định: 5s)')
 @click.option('--ratio', default='16:9', type=click.Choice(['1:1', '16:9', '9:16']), help='Tỉ lệ khung hình (mặc định: 16:9)')
+@click.option('--model', default='kling_master_2_1', type=click.Choice(['kling_2_1', 'kling_master_2_1']), help='Model AI để tạo video (mặc định: kling_master_2_1)')
 @click.option('--show-browser/--headless', default=False, help='Hiển thị trình duyệt (mặc định: False)')
-def video(file, topic, prompt, image, duration, ratio, show_browser):
-    """CHỈ TẠO VIDEO - Sinh video từ prompt hoặc ảnh"""
-    print(f"{Colors.GREEN}{Colors.BOLD}🎬 CHẾ ĐỘ TẠO VIDEO{Colors.ENDC}")
+def video(file, topic, prompt, image, duration, ratio, model, show_browser):
+    """Tạo video AI từ prompt hoặc ảnh (Text-to-Video hoặc Image-to-Video)"""
     
-    # Kiểm tra input
-    input_count = sum([bool(file), bool(topic), bool(prompt)])
-    if input_count == 0 and not image:
-        print(f"{Colors.FAIL}❌ Vui lòng cung cấp một trong các tùy chọn:{Colors.ENDC}")
-        print(f"   --file: Đường dẫn file prompt")
-        print(f"   --topic: Chủ đề tiếng Việt (dùng AI)")
-        print(f"   --prompt: Prompt trực tiếp tiếng Anh")
-        print(f"   --image: Đường dẫn ảnh (image-to-video)")
+    if not validate_environment():
         sys.exit(1)
+    
+    # Xác định prompt để sử dụng
+    video_prompt = None
+    
+    if prompt:
+        # Sử dụng prompt trực tiếp
+        video_prompt = prompt
+        print(f"{Colors.GREEN}📝 Sử dụng prompt trực tiếp: {prompt}{Colors.ENDC}")
         
-    if input_count > 1:
-        print(f"{Colors.FAIL}❌ Chỉ được chọn một tùy chọn input duy nhất{Colors.ENDC}")
+    elif topic:
+        # Sinh prompt từ chủ đề
+        print(f"{Colors.BLUE}🔮 Sinh prompt AI từ chủ đề: {topic}{Colors.ENDC}")
+        
+        try:
+            load_dotenv()
+            gemini_api_key = os.getenv("GEMINI_API_KEY")
+            if not gemini_api_key:
+                print(f"{Colors.WARNING}⚠️ Gemini API key không có, sử dụng prompt thủ công...{Colors.ENDC}")
+                manual_prompt = create_manual_prompt(topic)
+                if manual_prompt:
+                    video_prompt = manual_prompt['video_prompt']
+                else:
+                    print(f"{Colors.FAIL}❌ Không thể tạo prompt cho topic: {topic}{Colors.ENDC}")
+                    sys.exit(1)
+            else:
+                gemini_generator = GeminiPromptGenerator(output_dir="prompts")
+                prompt_data = gemini_generator.generate_prompt(topic, save_to_file=True)
+                if prompt_data:
+                    video_prompt = prompt_data['video_prompt']
+                    print(f"{Colors.GREEN}✅ Đã sinh prompt AI: {video_prompt[:100]}...{Colors.ENDC}")
+                else:
+                    print(f"{Colors.FAIL}❌ Không thể sinh prompt từ AI{Colors.ENDC}")
+                    sys.exit(1)
+                    
+        except Exception as e:
+            print(f"{Colors.WARNING}⚠️ Lỗi Gemini API: {e}{Colors.ENDC}")
+            print(f"{Colors.BLUE}🔄 Fallback sang prompt thủ công...{Colors.ENDC}")
+            manual_prompt = create_manual_prompt(topic)
+            if manual_prompt:
+                video_prompt = manual_prompt['video_prompt']
+            else:
+                print(f"{Colors.FAIL}❌ Không thể tạo prompt{Colors.ENDC}")
+                sys.exit(1)
+        
+    elif file:
+        # Đọc prompt từ file
+        print(f"{Colors.BLUE}📂 Đọc prompt từ file: {file}{Colors.ENDC}")
+        
+        if not os.path.exists(file):
+            print(f"{Colors.FAIL}❌ File không tồn tại: {file}{Colors.ENDC}")
+            sys.exit(1)
+            
+        try:
+            prompt_data = PromptLoader.load_prompt(file)
+            video_prompt = prompt_data.get("video_prompt", "")
+            if not video_prompt:
+                print(f"{Colors.FAIL}❌ Không tìm thấy video_prompt trong file{Colors.ENDC}")
+                sys.exit(1)
+            print(f"{Colors.GREEN}✅ Đã đọc prompt: {video_prompt[:100]}...{Colors.ENDC}")
+        except Exception as e:
+            print(f"{Colors.FAIL}❌ Lỗi đọc file: {e}{Colors.ENDC}")
+            sys.exit(1)
+    else:
+        print(f"{Colors.FAIL}❌ Vui lòng cung cấp một trong các tùy chọn: --prompt, --topic, hoặc --file{Colors.ENDC}")
+        print("Ví dụ:")
+        print("  python main.py video --prompt 'A cat playing with a ball'")
+        print("  python main.py video --topic 'Mèo dễ thương'") 
+        print("  python main.py video --file sample_prompts.json")
+        print("  python main.py video --prompt 'Dancing' --image cat.jpg")
         sys.exit(1)
     
     try:
+        # Load cookies
         cookies = load_cookie_from_template()
-        if not cookies:
-            print(f"{Colors.FAIL}❌ Không thể load cookie. Vui lòng cập nhật cookie_template.txt{Colors.ENDC}")
-            sys.exit(1)
+        cookie_string = json.dumps(cookies) if cookies else None
         
-        # Chuẩn bị prompt data
-        prompt_item = {
-            'duration': duration,
-            'ratio': ratio
-        }
-        
-        # Xử lý prompt
-        if file:
-            # Từ file
-            print(f"{Colors.BLUE}📁 Đang đọc prompt từ file: {file}{Colors.ENDC}")
-            if not os.path.exists(file):
-                print(f"{Colors.FAIL}❌ Không tìm thấy file: {file}{Colors.ENDC}")
-                sys.exit(1)
-                
-            loader = PromptLoader()
-            file_data = loader.load_prompt(file)
-            prompt_item['content'] = file_data.get('video_prompt', file_data.get('prompt', ''))
-            
-            # Lấy duration và ratio từ file nếu có
-            prompt_item['duration'] = file_data.get('video_duration', duration)
-            prompt_item['ratio'] = file_data.get('video_ratio', ratio)
-            
-        elif topic:
-            # Từ AI
-            print(f"{Colors.BLUE}🤖 Đang sinh prompt AI từ chủ đề: {topic}{Colors.ENDC}")
-            
-            try:
-                gemini_generator = GeminiPromptGenerator()
-                ai_result = gemini_generator.generate_prompt(topic, save_to_file=True)
-                prompt_item['content'] = ai_result['video_prompt']
-                prompt_item['duration'] = ai_result.get('video_duration', duration)
-                prompt_item['ratio'] = ai_result.get('video_ratio', ratio)
-                print(f"{Colors.GREEN}✅ Đã sinh prompt AI thành công!{Colors.ENDC}")
-                print(f"📁 File prompt: {ai_result.get('file_path', 'N/A')}")
-                print(f"🎬 Video prompt: {ai_result['video_prompt'][:100]}...")
-            except Exception as e:
-                print(f"{Colors.FAIL}❌ Lỗi sinh prompt AI: {e}{Colors.ENDC}")
-                print(f"{Colors.WARNING}🔧 Đang chuyển sang chế độ tạo prompt thủ công...{Colors.ENDC}")
-                
-                manual_prompt = create_manual_prompt(topic)
-                if manual_prompt:
-                    prompt_item['content'] = manual_prompt['video_prompt']
-                else:
-                    print(f"{Colors.FAIL}❌ Không thể tạo prompt thủ công{Colors.ENDC}")
-                    sys.exit(1)
-                    
-        elif prompt:
-            # Prompt trực tiếp
-            print(f"{Colors.BLUE}✍️ Sử dụng prompt trực tiếp{Colors.ENDC}")
-            prompt_item['content'] = prompt
-            
-        elif image:
-            # Image-to-video
-            print(f"{Colors.BLUE}🖼️ Tạo video từ ảnh: {image}{Colors.ENDC}")
-            if not os.path.exists(image):
-                print(f"{Colors.FAIL}❌ Không tìm thấy ảnh: {image}{Colors.ENDC}")
-                sys.exit(1)
-            
-            # Sử dụng tên file làm prompt mặc định
-            prompt_item['content'] = f'Video from image: {os.path.basename(image)}'
-        
-        # Tạo video
+        # Tạo video generator
         output_dir = create_output_dir()
+        video_generator = FreepikVideoGenerator(headless=not show_browser, output_dir=output_dir)
         
-        print(f"{Colors.GREEN}🎬 Bắt đầu sinh video...{Colors.ENDC}")
-        print(f"⏱️ Thời lượng: {prompt_item['duration']}")
-        print(f"📐 Tỉ lệ: {prompt_item['ratio']}")
-        
+        print(f"\n{Colors.BLUE}🎬 Bắt đầu tạo video...{Colors.ENDC}")
+        print(f"📝 Prompt: {video_prompt}")
+        print(f"⏱️ Duration: {duration}")
+        print(f"📐 Ratio: {ratio}")
+        print(f"🤖 Model: {model}")
         if image:
-            print(f"🖼️ Từ ảnh: {os.path.basename(image)}")
-            video_path = process_single_video_from_image(prompt_item, image, show_browser, cookies)
+            print(f"🖼️ Từ ảnh: {image}")
+        
+        # Chọn phương thức tạo video
+        if image:
+            # Image-to-Video
+            if not os.path.exists(image):
+                print(f"{Colors.FAIL}❌ File ảnh không tồn tại: {image}{Colors.ENDC}")
+                sys.exit(1)
+                
+            video_path = video_generator.generate_video_from_image(
+                image_path=image,
+                prompt=video_prompt,
+                cookie_string=cookie_string,
+                duration=duration,
+                ratio=ratio,
+                model=model
+            )
         else:
-            print(f"📝 Prompt: {prompt_item['content'][:100]}...")
-            # Tạo video từ text prompt - fallback tạo ảnh trước
-            print(f"{Colors.WARNING}⚠️ Text-to-video: Tạo ảnh trước rồi chuyển thành video...{Colors.ENDC}")
-            
-            # Tạo ảnh trước
-            temp_prompt_item = {
-                'content': prompt_item['content'],
-                'num_images': 1,
-                'download_count': 1,
-                'filename_prefix': 'temp_for_video'
-            }
-            
-            downloaded_files = process_single_image_batch(temp_prompt_item, show_browser, cookies)
-            if downloaded_files:
-                temp_image = downloaded_files[0]
-                print(f"{Colors.GREEN}✅ Đã tạo ảnh tạm: {os.path.basename(temp_image)}{Colors.ENDC}")
-                video_path = process_single_video_from_image(prompt_item, temp_image, show_browser, cookies)
-            else:
-                video_path = None
+            # Text-to-Video
+            video_path = video_generator.generate_video(
+                prompt=video_prompt,
+                cookie_string=cookie_string,
+                duration=duration,
+                ratio=ratio,
+                model=model
+            )
         
         if video_path:
-            print(f"{Colors.GREEN}{Colors.BOLD}✅ TẠO VIDEO THÀNH CÔNG!{Colors.ENDC}")
-            print(f"{Colors.GREEN}🎬 Video: {os.path.basename(video_path)}{Colors.ENDC}")
-            print(f"{Colors.BLUE}📁 Vị trí: thư mục output/{Colors.ENDC}")
+            print(f"\n{Colors.GREEN}{Colors.BOLD}✅ THÀNH CÔNG!{Colors.ENDC}")
+            print(f"{Colors.GREEN}📹 Video đã được tạo: {video_path}{Colors.ENDC}")
+            
+            # Hiển thị thông tin session
+            session_dir = os.path.dirname(video_path)
+            print(f"📁 Session folder: {session_dir}")
+            
+            # Hiển thị các file trong session
+            try:
+                files = os.listdir(session_dir)
+                print(f"📂 Files trong session:")
+                for f in files:
+                    print(f"  - {f}")
+            except:
+                pass
+                
         else:
-            print(f"{Colors.FAIL}❌ Thất bại sinh video{Colors.ENDC}")
+            print(f"{Colors.FAIL}❌ Thất bại tạo video{Colors.ENDC}")
             sys.exit(1)
             
     except Exception as e:
-        print(f"{Colors.FAIL}❌ Lỗi: {str(e)}{Colors.ENDC}")
+        print(f"{Colors.FAIL}❌ Lỗi tạo video: {e}{Colors.ENDC}")
+        if "--debug" in sys.argv:
+            traceback.print_exc()
         sys.exit(1)
 
 

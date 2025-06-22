@@ -412,13 +412,13 @@ class BrowserOptimizer:
         return False
 
 
-def create_optimized_browser_context(playwright, browser_type: str = "firefox"):
+def create_optimized_browser_context(playwright, browser_type: str = "chrome"):
     """
     Tạo browser context được tối ưu cho automation
     
     Args:
         playwright: Playwright instance
-        browser_type: "firefox" hoặc "chrome"
+        browser_type: "chrome" hoặc "chrome"
         
     Returns:
         Browser context đã được tối ưu
@@ -435,10 +435,10 @@ def create_optimized_browser_context(playwright, browser_type: str = "firefox"):
                 "--window-size=1920,1080"
             ]
         )
-    else:  # firefox
-        browser = playwright.firefox.launch(
+    else:  # chrome
+        browser = playwright.chrome.launch(
             headless=False,
-            firefox_user_prefs={
+            chrome_user_prefs={
                 "dom.webdriver.enabled": False,
                 "useAutomationExtension": False,
                 "general.platform.override": "Win32"

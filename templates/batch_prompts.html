@@ -36,11 +36,9 @@
                     </div>
                     
                     <div class="mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="showBrowser">
-                            <label class="form-check-label" for="showBrowser">
-                                Hiển thị trình duyệt (để debug)
-                            </label>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Lưu ý:</strong> Trình duyệt sẽ luôn hiển thị để đảm bảo hoạt động ổn định với Freepik.
                         </div>
                     </div>
                     
@@ -344,7 +342,7 @@
             isProcessing = true;
             showProcessingUI();
             
-            const showBrowser = document.getElementById('showBrowser').checked;
+            // Browser luôn visible
             
             const response = await fetch('/api/batch-prompts', {
                 method: 'POST',
@@ -352,8 +350,8 @@
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    file_content: fileContent,
-                    show_browser: showBrowser
+                    file_content: fileContent
+                    // Browser luôn visible
                 })
             });
             

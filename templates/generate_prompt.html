@@ -2,6 +2,268 @@
 
 {% block title %}Tạo prompt AI - FazzyTool{% endblock %}
 
+{% block extra_css %}
+<style>
+    .example-btn {
+        transition: all 0.2s ease;
+    }
+    .example-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    /* Prompt card styling */
+    .prompt-card {
+        transition: all 0.3s ease;
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 12px;
+        cursor: pointer;
+    }
+    
+    .prompt-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        border-color: #007bff;
+    }
+    
+    .prompt-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: linear-gradient(45deg, #007bff, #28a745);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .prompt-card:hover::before {
+        opacity: 1;
+    }
+    
+    .prompt-topic {
+        color: #007bff;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .prompt-topic::before {
+        content: '🎯';
+        margin-right: 6px;
+    }
+    
+    .prompt-text {
+        color: #6c757d;
+        font-size: 0.8rem;
+        line-height: 1.4;
+        margin-bottom: 8px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .prompt-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.7rem;
+        color: #adb5bd;
+        margin-bottom: 8px;
+    }
+    
+    .prompt-actions {
+        display: flex;
+        gap: 6px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .prompt-card:hover .prompt-actions {
+        opacity: 1;
+    }
+    
+    .action-btn {
+        padding: 4px 8px;
+        border-radius: 6px;
+        border: none;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .action-btn:hover {
+        transform: translateY(-1px);
+    }
+    
+    .btn-edit {
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        color: white;
+    }
+    
+    .btn-copy {
+        background: linear-gradient(45deg, #28a745, #1e7e34);
+        color: white;
+    }
+    
+    .btn-use {
+        background: linear-gradient(45deg, #17a2b8, #138496);
+        color: white;
+    }
+    
+    /* Edit form styling */
+    .edit-form {
+        background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+        border-radius: 12px;
+        padding: 16px;
+        border: 2px solid #007bff;
+        box-shadow: 0 4px 20px rgba(0,123,255,0.1);
+    }
+    
+    .edit-form .form-label {
+        color: #495057;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+    
+    .edit-form .form-control {
+        border-radius: 8px;
+        border: 1px solid #ced4da;
+        transition: all 0.2s ease;
+    }
+    
+    .edit-form .form-control:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+    }
+    
+    .edit-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+    }
+    
+    .edit-actions .btn {
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+    
+    .edit-actions .btn:hover {
+        transform: translateY(-1px);
+    }
+    
+    /* Recent prompts section */
+    .recent-prompts-header {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        color: white;
+        border-radius: 12px 12px 0 0;
+        padding: 12px 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .recent-prompts-header h6 {
+        margin: 0;
+        font-weight: 600;
+    }
+    
+    .refresh-btn {
+        background: rgba(255,255,255,0.2);
+        border: 1px solid rgba(255,255,255,0.3);
+        color: white;
+        border-radius: 6px;
+        padding: 4px 8px;
+        transition: all 0.2s ease;
+    }
+    
+    .refresh-btn:hover {
+        background: rgba(255,255,255,0.3);
+        transform: rotate(180deg);
+    }
+    
+    .prompts-container {
+        max-height: 500px;
+        overflow-y: auto;
+        padding: 8px;
+    }
+    
+    .prompts-container::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .prompts-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+    
+    .prompts-container::-webkit-scrollbar-thumb {
+        background: #007bff;
+        border-radius: 3px;
+    }
+    
+    /* Empty state */
+    .empty-prompts {
+        text-align: center;
+        padding: 40px 20px;
+        color: #6c757d;
+    }
+    
+    .empty-prompts i {
+        font-size: 3rem;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+    
+    /* Loading animation */
+    .loading-prompts {
+        text-align: center;
+        padding: 20px;
+        color: #007bff;
+    }
+    
+    .loading-prompts i {
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .prompt-actions {
+            opacity: 1;
+        }
+        
+        .edit-actions {
+            flex-direction: column;
+        }
+        
+        .action-btn {
+            font-size: 0.7rem;
+            padding: 3px 6px;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row">
     <div class="col-12">
@@ -16,7 +278,7 @@
 </div>
 
 <div class="row">
-    <div class="col-md-8">
+    <div class="col-md-6">
         <!-- Form tạo prompt -->
         <div class="card">
             <div class="card-header">
@@ -51,9 +313,34 @@
                 </form>
             </div>
         </div>
-        
+
+    </div>
+    
+    <div class="col-md-6">
+        <!-- Prompt gần đây -->
+        <div class="card border-0 shadow-sm">
+            <div class="recent-prompts-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-history me-2"></i>Prompt gần đây (Bấm chỉnh sửa để xem chi tiết)
+                </h6>
+                <button class="refresh-btn" onclick="loadRecentPrompts()" title="Làm mới">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+            <div class="prompts-container" id="recentPrompts">
+                <div class="loading-prompts">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <div class="mt-2">Đang tải prompts...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-8">
         <!-- Kết quả prompt -->
-        <div class="card mt-3" id="resultCard" style="display: none;">
+        <div class="card" id="resultCard" style="display: none;">
             <div class="card-header">
                 <h5 class="card-title mb-0">
                     <i class="fas fa-file-text me-2"></i>Prompt đã tạo
@@ -66,18 +353,36 @@
                 </div>
                 
                 <div class="mb-3">
-                    <label class="form-label">Prompt (tiếng Anh):</label>
+                    <label class="form-label">Prompt ảnh (tiếng Anh):</label>
                     <div class="position-relative">
                         <textarea 
                             id="resultPrompt" 
                             class="form-control" 
-                            rows="6" 
+                            rows="4" 
                             readonly></textarea>
                         <button 
                             type="button" 
                             class="btn btn-outline-primary btn-sm position-absolute top-0 end-0 m-2" 
                             id="copyBtn"
-                            title="Sao chép">
+                            title="Sao chép prompt ảnh">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Prompt video (tiếng Anh):</label>
+                    <div class="position-relative">
+                        <textarea 
+                            id="resultVideoPrompt" 
+                            class="form-control" 
+                            rows="4" 
+                            readonly></textarea>
+                        <button 
+                            type="button" 
+                            class="btn btn-outline-primary btn-sm position-absolute top-0 end-0 m-2" 
+                            id="copyVideoBtn"
+                            title="Sao chép prompt video">
                             <i class="fas fa-copy"></i>
                         </button>
                     </div>
@@ -177,19 +482,7 @@
             </div>
         </div>
         
-        <!-- Prompt gần đây -->
-        <div class="card mt-3">
-            <div class="card-header">
-                <h6 class="card-title mb-0">
-                    <i class="fas fa-history me-2"></i>Prompt gần đây
-                </h6>
-            </div>
-            <div class="card-body">
-                <div id="recentPrompts">
-                    <!-- Recent prompts will be loaded here -->
-                </div>
-            </div>
-        </div>
+
     </div>
 </div>
 {% endblock %}
@@ -208,7 +501,7 @@
         const usePromptBtn = document.getElementById('usePromptBtn');
         const exampleBtns = document.querySelectorAll('.example-btn');
         
-        // Load recent prompts
+        // Load recent prompts immediately (no auto-refresh)
         loadRecentPrompts();
         
         // Handle form submission
@@ -224,9 +517,23 @@
             hideResult();
         });
         
-        // Handle copy button
+        // Handle copy button for image prompt
         copyBtn.addEventListener('click', function() {
             const promptText = document.getElementById('resultPrompt');
+            promptText.select();
+            document.execCommand('copy');
+            
+            // Show feedback
+            this.innerHTML = '<i class="fas fa-check"></i>';
+            setTimeout(() => {
+                this.innerHTML = '<i class="fas fa-copy"></i>';
+            }, 2000);
+        });
+        
+        // Handle copy button for video prompt
+        const copyVideoBtn = document.getElementById('copyVideoBtn');
+        copyVideoBtn.addEventListener('click', function() {
+            const promptText = document.getElementById('resultVideoPrompt');
             promptText.select();
             document.execCommand('copy');
             
@@ -330,14 +637,27 @@
         currentPromptData = promptData;
         
         document.getElementById('resultTopic').textContent = promptData.topic || '';
-        document.getElementById('resultPrompt').value = promptData.content || '';
+        document.getElementById('resultPrompt').value = promptData.image_prompt || '';
+        document.getElementById('resultVideoPrompt').value = promptData.video_prompt || '';
+        document.getElementById('resultVideoDuration').value = promptData.video_duration || '';
+        document.getElementById('resultVideoRatio').value = promptData.video_ratio || '';
         document.getElementById('resultCard').style.display = 'block';
         
         // Update status message
         document.getElementById('statusMessage').innerHTML = `<i class="fas fa-check-circle text-success me-2"></i>Hoàn thành! Prompt đã được tạo và lưu`;
         
-        // Reload recent prompts
-        loadRecentPrompts();
+        // Show countdown and reload prompts after 4 seconds
+        let countdown = 4;
+        const countdownInterval = setInterval(() => {
+            document.getElementById('statusMessage').innerHTML = `<i class="fas fa-check-circle text-success me-2"></i>Hoàn thành! Đang cập nhật danh sách prompts... (${countdown}s)`;
+            countdown--;
+            
+            if (countdown < 0) {
+                clearInterval(countdownInterval);
+                loadRecentPrompts();
+                document.getElementById('statusMessage').innerHTML = `<i class="fas fa-check-circle text-success me-2"></i>Hoàn thành! Prompt đã được tạo và lưu`;
+            }
+        }, 1000);
     }
     
     function hideResult() {
@@ -367,41 +687,267 @@
     }
     
     function loadRecentPrompts() {
+        console.log('Loading recent prompts...');
+        const container = document.getElementById('recentPrompts');
+        container.innerHTML = `
+            <div class="loading-prompts">
+                <i class="fas fa-spinner fa-spin"></i>
+                <div class="mt-2">Đang tải prompts...</div>
+            </div>
+        `;
+        
         fetch('/api/prompts')
             .then(r => r.json())
             .then(prompts => {
+                console.log('Received prompts:', prompts);
+                currentPrompts = prompts.slice(0, 5); // Store for global access
                 const container = document.getElementById('recentPrompts');
                 container.innerHTML = '';
                 
-                prompts.slice(0, 5).forEach(prompt => {
+                currentPrompts.forEach((prompt, index) => {
+                    const displayText = prompt.content || prompt.image_prompt || 'Không có nội dung';
                     const div = document.createElement('div');
-                    div.className = 'mb-2 p-2 bg-light rounded cursor-pointer';
-                    div.style.cursor = 'pointer';
+                    div.className = 'prompt-card p-3';
                     div.innerHTML = `
                         <div class="d-flex justify-content-between align-items-start">
-                            <div class="flex-grow-1">
-                                <strong class="text-success small">${prompt.topic || 'Không có chủ đề'}</strong>
-                                <p class="mb-1 text-muted" style="font-size: 0.8rem;">${prompt.content.substring(0, 60)}...</p>
-                                <small class="text-muted" style="font-size: 0.7rem;">${prompt.created}</small>
+                            <div class="flex-grow-1" onclick="loadPromptToEditor(${index})">
+                                <div class="prompt-topic">${prompt.topic || 'Không có chủ đề'}</div>
+                                <div class="prompt-text">${displayText}</div>
+                                <div class="prompt-meta">
+                                    <span><i class="fas fa-clock me-1"></i>${prompt.created}</span>
+                                    <span><i class="fas fa-file-alt me-1"></i>${prompt.filename || 'N/A'}</span>
+                                </div>
+                            </div>
+                            <div class="prompt-actions ms-2">
+                                <button class="action-btn btn-edit" onclick="editPromptInline(${index})" title="Chỉnh sửa">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="action-btn btn-copy" onclick="copyPromptText(${index})" title="Copy">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                                <button class="action-btn btn-use" onclick="loadPromptToEditor(${index})" title="Sử dụng">
+                                    <i class="fas fa-arrow-right"></i>
+                                </button>
                             </div>
                         </div>
                     `;
                     
-                    div.addEventListener('click', function() {
-                        document.getElementById('resultTopic').textContent = prompt.topic || '';
-                        document.getElementById('resultPrompt').value = prompt.content || '';
-                        document.getElementById('resultCard').style.display = 'block';
-                        currentPromptData = prompt;
-                    });
+                    // Store prompt data in div for later access
+                    div.promptData = prompt;
+                    div.promptIndex = index;
                     
                     container.appendChild(div);
                 });
                 
                 if (prompts.length === 0) {
-                    container.innerHTML = '<div class="text-center text-muted"><small>Chưa có prompt nào</small></div>';
+                    container.innerHTML = `
+                        <div class="empty-prompts">
+                            <i class="fas fa-file-text"></i>
+                            <div><strong>Chưa có prompt nào</strong></div>
+                            <small>Tạo prompt đầu tiên để bắt đầu!</small>
+                        </div>
+                    `;
                 }
             })
-            .catch(console.error);
+            .catch(error => {
+                console.error('Error loading prompts:', error);
+                const container = document.getElementById('recentPrompts');
+                container.innerHTML = `
+                    <div class="empty-prompts">
+                        <i class="fas fa-exclamation-triangle text-danger"></i>
+                        <div><strong>Lỗi tải prompts</strong></div>
+                        <small>${error.message}</small>
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-primary" onclick="loadRecentPrompts()">
+                                <i class="fas fa-redo me-1"></i>Thử lại
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+    }
+    
+    // Global variable to store current prompts for access in onclick functions
+    let currentPrompts = [];
+    
+    function loadPromptToEditor(index) {
+        const prompt = currentPrompts[index];
+        if (!prompt) return;
+        
+        document.getElementById('resultTopic').textContent = prompt.topic || '';
+        document.getElementById('resultPrompt').value = prompt.content || prompt.image_prompt || '';
+        document.getElementById('resultVideoPrompt').value = prompt.video_prompt || '';
+        document.getElementById('resultVideoDuration').value = prompt.video_duration || '';
+        document.getElementById('resultVideoRatio').value = prompt.video_ratio || '';
+        document.getElementById('resultCard').style.display = 'block';
+        currentPromptData = prompt;
+    }
+    
+    function copyPromptText(index) {
+        const prompt = currentPrompts[index];
+        if (!prompt) return;
+        
+        const textToCopy = prompt.content || prompt.image_prompt || '';
+        
+        // Create temporary textarea to copy text
+        const textarea = document.createElement('textarea');
+        textarea.value = textToCopy;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        
+        // Show feedback
+        const button = event.target.closest('button');
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check text-success"></i>';
+        setTimeout(() => {
+            button.innerHTML = originalHTML;
+        }, 2000);
+    }
+    
+    function editPromptInline(index) {
+        const prompt = currentPrompts[index];
+        if (!prompt) return;
+        
+        const container = document.getElementById('recentPrompts');
+        const promptDiv = container.children[index];
+        
+        if (!promptDiv) return;
+        
+        // Create edit form
+        const originalContent = promptDiv.innerHTML;
+        const imagePrompt = prompt.content || prompt.image_prompt || '';
+        const videoPrompt = prompt.video_prompt || '';
+        
+        promptDiv.innerHTML = `
+            <div class="edit-form">
+                <div class="mb-2">
+                    <label class="form-label small"><strong>Chủ đề:</strong></label>
+                    <input type="text" class="form-control form-control-sm" value="${prompt.topic || ''}" id="editTopic_${index}">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small"><strong>Prompt ảnh:</strong></label>
+                    <textarea class="form-control form-control-sm" rows="3" id="editImagePrompt_${index}">${imagePrompt}</textarea>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small"><strong>Prompt video:</strong></label>
+                    <textarea class="form-control form-control-sm" rows="3" id="editVideoPrompt_${index}">${videoPrompt}</textarea>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6">
+                        <label class="form-label small"><strong>Thời lượng:</strong></label>
+                        <select class="form-control form-control-sm" id="editDuration_${index}">
+                            <option value="5s" ${prompt.video_duration === '5s' ? 'selected' : ''}>5s</option>
+                            <option value="10s" ${prompt.video_duration === '10s' ? 'selected' : ''}>10s</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small"><strong>Tỷ lệ:</strong></label>
+                        <select class="form-control form-control-sm" id="editRatio_${index}">
+                            <option value="16:9" ${prompt.video_ratio === '16:9' ? 'selected' : ''}>16:9</option>
+                            <option value="1:1" ${prompt.video_ratio === '1:1' ? 'selected' : ''}>1:1</option>
+                            <option value="9:16" ${prompt.video_ratio === '9:16' ? 'selected' : ''}>9:16</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="edit-actions">
+                    <button class="btn btn-success" onclick="savePromptEdit(${index})">
+                        <i class="fas fa-save me-1"></i>Lưu
+                    </button>
+                    <button class="btn btn-secondary" onclick="cancelPromptEdit(${index})">
+                        <i class="fas fa-times me-1"></i>Hủy
+                    </button>
+                    <button class="btn btn-primary" onclick="useEditedPrompt(${index})">
+                        <i class="fas fa-arrow-right me-1"></i>Dùng ngay
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Store original content for cancel
+        promptDiv.originalContent = originalContent;
+    }
+    
+    function cancelPromptEdit(index) {
+        const container = document.getElementById('recentPrompts');
+        const promptDiv = container.children[index];
+        
+        if (promptDiv && promptDiv.originalContent) {
+            promptDiv.innerHTML = promptDiv.originalContent;
+            delete promptDiv.originalContent;
+        }
+    }
+    
+    function useEditedPrompt(index) {
+        const newTopic = document.getElementById(`editTopic_${index}`).value;
+        const newImagePrompt = document.getElementById(`editImagePrompt_${index}`).value;
+        const newVideoPrompt = document.getElementById(`editVideoPrompt_${index}`).value;
+        const newDuration = document.getElementById(`editDuration_${index}`).value;
+        const newRatio = document.getElementById(`editRatio_${index}`).value;
+        
+        // Load to result editor
+        document.getElementById('resultTopic').textContent = newTopic;
+        document.getElementById('resultPrompt').value = newImagePrompt;
+        document.getElementById('resultVideoPrompt').value = newVideoPrompt;
+        document.getElementById('resultVideoDuration').value = newDuration;
+        document.getElementById('resultVideoRatio').value = newRatio;
+        document.getElementById('resultCard').style.display = 'block';
+        
+        // Cancel edit mode
+        cancelPromptEdit(index);
+    }
+    
+    function savePromptEdit(index) {
+        const prompt = currentPrompts[index];
+        if (!prompt) return;
+        
+        const newTopic = document.getElementById(`editTopic_${index}`).value;
+        const newImagePrompt = document.getElementById(`editImagePrompt_${index}`).value;
+        const newVideoPrompt = document.getElementById(`editVideoPrompt_${index}`).value;
+        const newDuration = document.getElementById(`editDuration_${index}`).value;
+        const newRatio = document.getElementById(`editRatio_${index}`).value;
+        
+        // Update the prompt data
+        const updatedPrompt = {
+            ...prompt,
+            topic: newTopic,
+            image_prompt: newImagePrompt,
+            content: newImagePrompt, // Keep both for compatibility
+            video_prompt: newVideoPrompt,
+            video_duration: newDuration,
+            video_ratio: newRatio
+        };
+        
+        // Save to file via API (you could implement this)
+        fetch('/api/update-prompt', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                filename: prompt.filename,
+                data: updatedPrompt
+            })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                // Update local data
+                currentPrompts[index] = updatedPrompt;
+                
+                // Refresh display
+                loadRecentPrompts();
+                
+                alert('Đã lưu thành công!');
+            } else {
+                alert('Lỗi lưu: ' + (result.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Save error:', error);
+            alert('Lỗi lưu prompt: ' + error.message);
+        });
     }
     
     // Check for prompt parameter in URL

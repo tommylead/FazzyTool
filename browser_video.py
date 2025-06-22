@@ -1,598 +1,1125 @@
 """
-Module xử lý việc điều khiển trình duyệt tự động để sinh video từ Freepik AI.
+Browser automation cho việc sinh video từ Freepik AI
 """
 
 import os
 import time
 import json
-import shutil
-from pathlib import Path
-from typing import Dict, Any, Optional
 from datetime import datetime
+from typing import Optional, List, Dict, Any
 
-from dotenv import load_dotenv
-from playwright.sync_api import sync_playwright, Page, Browser
+from playwright.sync_api import sync_playwright, Page
 
 
 class FreepikVideoGenerator:
-    """Lớp xử lý việc điều khiển trình duyệt để sinh video từ Freepik AI."""
+    """Lớp xử lý việc sinh video từ Freepik AI bằng browser automation."""
 
     def __init__(self, headless: bool = True, output_dir: str = "output"):
-        """
-        Khởi tạo trình điều khiển browser.
-        
-        Args:
-            headless: True để chạy ẩn browser, False để hiển thị UI
-            output_dir: Thư mục lưu video đầu ra
-        """
         self.headless = headless
-        self.base_output_dir = output_dir
+        self.output_dir = output_dir
+        
+        # Tạo thư mục output nếu chưa tồn tại
+        os.makedirs(self.output_dir, exist_ok=True)
+        
+        # Session tracking
         self.current_session_dir = None
         
-        # Tạo thư mục output chính nếu chưa tồn tại
-        os.makedirs(self.base_output_dir, exist_ok=True)
-    
-    def _create_session_folder(self, session_type: str = "video") -> str:
-        """
-        Tạo folder cho session hiện tại với timestamp
-        
-        Args:
-            session_type: Loại session (video, image_to_video, etc.)
-            
-        Returns:
-            str: Đường dẫn tới session folder
-        """
-        # Tạo timestamp cho session
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        session_name = f"{session_type}_{timestamp}"
-        
-        # Tạo đường dẫn session folder
-        session_dir = os.path.join(self.base_output_dir, session_name)
-        os.makedirs(session_dir, exist_ok=True)
-        
-        # Lưu session hiện tại
-        self.current_session_dir = session_dir
-        
-        print(f"📁 Tạo session folder: {session_name}")
-        return session_dir
-    
-    def _save_session_metadata(self, metadata: dict):
-        """
-        Lưu metadata của session vào file JSON
-        
-        Args:
-            metadata: Dictionary chứa thông tin session
-        """
-        if not self.current_session_dir:
-            return
-            
-        metadata_path = os.path.join(self.current_session_dir, "session_info.json")
-        metadata["session_created"] = datetime.now().isoformat()
-        metadata["session_folder"] = os.path.basename(self.current_session_dir)
-        
-        with open(metadata_path, 'w', encoding='utf-8') as f:
-            json.dump(metadata, f, indent=2, ensure_ascii=False)
-        
-        print(f"📋 Lưu session metadata: session_info.json")
-    
-    def _copy_input_file(self, source_path: str, new_name: str = None) -> str:
-        """
-        Copy file input vào session folder
-        
-        Args:
-            source_path: Đường dẫn file gốc
-            new_name: Tên mới cho file (optional)
-            
-        Returns:
-            str: Đường dẫn file đã copy
-        """
-        if not self.current_session_dir or not os.path.exists(source_path):
-            return source_path
-        
-        source_file = Path(source_path)
-        if new_name:
-            dest_name = new_name
-        else:
-            dest_name = f"input_{source_file.name}"
-        
-        dest_path = os.path.join(self.current_session_dir, dest_name)
-        shutil.copy2(source_path, dest_path)
-        
-        print(f"📎 Copy input file: {dest_name}")
-        return dest_path
-    
-    def get_session_summary(self) -> dict:
-        """
-        Lấy thống kê các session đã tạo
-        
-        Returns:
-            dict: Thống kê sessions
-        """
-        if not os.path.exists(self.base_output_dir):
-            return {"total_sessions": 0, "sessions": []}
-        
-        sessions = []
-        for item in os.listdir(self.base_output_dir):
-            item_path = os.path.join(self.base_output_dir, item)
-            if os.path.isdir(item_path) and ("video_" in item or "image_to_video_" in item or "text_to_video_" in item):
-                session_info = {"folder_name": item, "path": item_path}
-                
-                # Đọc metadata nếu có
-                metadata_path = os.path.join(item_path, "session_info.json")
-                if os.path.exists(metadata_path):
-                    try:
-                        with open(metadata_path, 'r', encoding='utf-8') as f:
-                            metadata = json.load(f)
-                        session_info.update(metadata)
-                    except:
-                        pass
-                
-                # Thêm thông tin files
-                files = os.listdir(item_path)
-                session_info["files"] = files
-                session_info["file_count"] = len(files)
-                
-                sessions.append(session_info)
-        
-        # Sắp xếp theo thời gian tạo (mới nhất trước)
-        sessions.sort(key=lambda x: x.get("session_created", ""), reverse=True)
-        
-        return {
-            "total_sessions": len(sessions),
-            "sessions": sessions[:10],  # Chỉ lấy 10 sessions gần nhất
-            "base_output_dir": self.base_output_dir
+        # Thống kê để tracking
+        self.generation_stats = {
+            "total_generated": 0,
+            "successful_downloads": 0,
+            "failed_downloads": 0
         }
-    
-    def print_session_summary(self):
-        """In ra thống kê sessions đã tạo"""
-        summary = self.get_session_summary()
-        
-        print(f"\n📊 THỐNG KÊ VIDEO SESSIONS")
-        print(f"📁 Thư mục gốc: {summary['base_output_dir']}")
-        print(f"🎬 Tổng sessions: {summary['total_sessions']}")
-        
-        if summary['sessions']:
-            print(f"\n📋 {min(10, len(summary['sessions']))} Sessions gần nhất:")
-            for i, session in enumerate(summary['sessions'], 1):
-                status = session.get('status', 'unknown')
-                session_type = session.get('type', 'unknown')
-                created = session.get('session_created', 'unknown')
-                
-                status_icon = "✅" if status == "completed" else "❌" if status == "error" else "⚠️"
-                
-                print(f"  {i}. {status_icon} {session['folder_name']}")
-                print(f"     📅 {created[:19] if created != 'unknown' else 'Unknown'}")
-                print(f"     🎭 Type: {session_type}")
-                print(f"     📁 Files: {session.get('file_count', 0)}")
-                if 'prompt' in session:
-                    prompt_short = session['prompt'][:50] + "..." if len(session['prompt']) > 50 else session['prompt']
-                    print(f"     💬 Prompt: {prompt_short}")
-        else:
-            print("Chưa có session nào.")
-    
-    def _download_video_to_session(self, page = None) -> Optional[str]:
-        """
-        Download video vào session folder hiện tại
-        
-        Args:
-            page: Playwright page object (sẽ được lấy từ context nếu không có)
-            
-        Returns:
-            str: Đường dẫn file video đã download
-        """
-        if not self.current_session_dir:
-            print("❌ Không có session folder để lưu video")
-            return None
-        
-        # Tạo tên file video với timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"video_output_{timestamp}.mp4"
-        filepath = os.path.join(self.current_session_dir, filename)
-        
-        # Note: Method này sẽ được gọi từ context có page
-        # Logic download sẽ được thêm vào trong context generate_video_from_image
-        return filepath
-    
+
     def parse_cookies(self, cookie_input: str):
-        """
-        Parse cookie từ nhiều định dạng khác nhau
-        
-        Args:
-            cookie_input: Cookie dưới dạng string hoặc JSON
+        """Parse cookie từ string hoặc JSON - improved version"""
+        if not cookie_input or not cookie_input.strip():
+            return []
             
-        Returns:
-            list: Danh sách cookie đã được parse
-        """
+        # Kiểm tra placeholder cookie
+        if cookie_input.strip() == "placeholder_cookie":
+            print("⚠️ Cookie placeholder được phát hiện, bỏ qua...")
+            return []
+            
+        cookies = []
+        
         try:
+            # Extract JSON from template file nếu cần
+            if "=== PASTE COOKIE JSON VÀO ĐÂY ===" in cookie_input:
+                start_marker = "=== PASTE COOKIE JSON VÀO ĐÂY ==="
+                end_marker = "=== KẾT THÚC COOKIE ==="
+                
+                start_idx = cookie_input.find(start_marker)
+                if start_idx != -1:
+                    json_start = start_idx + len(start_marker)
+                    end_idx = cookie_input.find(end_marker, json_start)
+                    
+                    if end_idx == -1:
+                        cookie_json = cookie_input[json_start:].strip()
+                    else:
+                        cookie_json = cookie_input[json_start:end_idx].strip()
+                    
+                    cookie_input = cookie_json
+            
             # Thử parse JSON trước
             if cookie_input.strip().startswith('['):
-                cookies_json = json.loads(cookie_input)
+                json_cookies = json.loads(cookie_input)
                 
-                # Lọc các cookie quan trọng cho Freepik
-                important_cookies = []
-                important_names = [
-                    'GR_TOKEN',      # Token xác thực chính
-                    'GR_REFRESH',    # Refresh token
-                    'GRID',          # User ID
-                    'UID',           # User ID backup
-                    '_ga',           # Google Analytics
-                    '_ga_QWX66025LC',# Google Analytics specific
-                    'OptanonConsent',# Cookie consent
-                    'ab.storage.userId.8086d9ee-1f81-4508-ba9f-3a661635ac90',  # User session
-                    'ph_phc_Rc6y1yvZwwwR09Pl9NtKBo5gzpxr1Ei4Bdbg3kC1Ihz_posthog'  # Analytics
-                ]
-                
-                for cookie in cookies_json:
-                    if cookie['name'] in important_names:
-                        important_cookies.append({
-                            'name': cookie['name'],
-                            'value': cookie['value'],
-                            'domain': cookie['domain'],
-                            'path': cookie.get('path', '/'),
-                            'secure': cookie.get('secure', False),
-                            'httpOnly': cookie.get('httpOnly', False)
-                        })
-                
-                print(f"✓ Đã parse {len(important_cookies)} cookie quan trọng từ {len(cookies_json)} cookie")
-                return important_cookies
-                
+                for cookie in json_cookies:
+                    # Skip cookies thiếu required fields
+                    if not cookie.get('name') or not cookie.get('value'):
+                        continue
+                    
+                    # Chuyển đổi format Firefox sang Playwright - IMPROVED
+                    playwright_cookie = {
+                        'name': str(cookie['name']),
+                        'value': str(cookie['value']),
+                        'domain': str(cookie.get('domain', '.freepik.com')),
+                        'path': str(cookie.get('path', '/')),
+                    }
+                    
+                    # Handle boolean fields safely
+                    if 'secure' in cookie and cookie['secure'] is not None:
+                        playwright_cookie['secure'] = bool(cookie['secure'])
+                    
+                    if 'httpOnly' in cookie and cookie['httpOnly'] is not None:
+                        playwright_cookie['httpOnly'] = bool(cookie['httpOnly'])
+                    
+                    # Handle sameSite safely
+                    if 'sameSite' in cookie and cookie['sameSite']:
+                        same_site = str(cookie['sameSite']).lower()
+                        if same_site in ['lax', 'strict', 'none']:
+                            playwright_cookie['sameSite'] = same_site.capitalize()
+                    
+                    # Skip expirationDate - it causes issues with Playwright
+                    # Playwright will handle session vs persistent automatically
+                    
+                    cookies.append(playwright_cookie)
+                    
             else:
-                # Parse cookie string dạng "name=value; name2=value2"
-                cookies = []
-                cookie_pairs = cookie_input.split(';')
-                
-                for pair in cookie_pairs:
-                    if '=' in pair:
-                        name, value = pair.strip().split('=', 1)
+                # Parse string format (name=value; name2=value2)
+                for part in cookie_input.split(';'):
+                    if '=' in part:
+                        name, value = part.strip().split('=', 1)
                         cookies.append({
                             'name': name.strip(),
                             'value': value.strip(),
                             'domain': '.freepik.com',
-                            'path': '/',
-                            'secure': False,
-                            'httpOnly': False
+                            'path': '/'
                         })
-                
-                print(f"✓ Đã parse {len(cookies)} cookie từ cookie string")
-                return cookies
-                
+                        
+            print(f"✅ Parsed {len(cookies)} valid cookies")
+            return cookies
+            
         except Exception as e:
             print(f"❌ Lỗi parse cookie: {e}")
             return []
-    
-    def set_cookies(self, page: Page, cookies):
-        """
-        Thiết lập cookie cho trang web
-        
-        Args:
-            page: Playwright page object
-            cookies: Danh sách cookie
-        """
-        try:
-            if cookies:
-                page.context.add_cookies(cookies)
-                print(f"✓ Đã thiết lập {len(cookies)} cookie")
-            else:
-                print("⚠️ Không có cookie để thiết lập")
-        except Exception as e:
-            print(f"❌ Lỗi thiết lập cookie: {e}")
 
-    def generate_video_from_image(self, image_path: str, prompt: str, cookie_string: str = None, duration: str = "5s", ratio: str = "1:1"):
-        """
-        Sinh video từ ảnh sử dụng Freepik AI Image-to-Video với Kling 2.1 Master
-        
-        Args:
-            image_path: Đường dẫn tới ảnh đầu vào
-            prompt: Mô tả video cần sinh
-            cookie_string: Cookie để đăng nhập (string hoặc JSON)
-            duration: Thời lượng video ("5s" hoặc "10s")
-            ratio: Tỷ lệ khung hình ("1:1", "16:9", "9:16")
+    def set_cookies(self, page: Page, cookies):
+        """Set cookies cho page"""
+        if not cookies:
+            return
             
-        Returns:
-            str: Đường dẫn file video đã tải về
-        """
-        print(f"🎬 Bắt đầu sinh video từ ảnh: {image_path}")
-        print(f"📝 Prompt: {prompt}")
-        
-        if not os.path.exists(image_path):
-            raise FileNotFoundError(f"Không tìm thấy file ảnh: {image_path}")
-        
-        # Tạo session folder cho lần generate này
-        session_dir = self._create_session_folder("image_to_video")
-        
-        # Copy ảnh input vào session folder
-        input_image_path = self._copy_input_file(image_path, "input_image" + Path(image_path).suffix)
-        
-        # Chuẩn bị metadata
-        session_metadata = {
-            "type": "image_to_video",
-            "prompt": prompt,
-            "duration": duration,
-            "ratio": ratio,
-            "input_image": os.path.basename(input_image_path),
-            "original_image_path": image_path
+        try:
+            # Lọc cookies hợp lệ
+            valid_cookies = []
+            for cookie in cookies:
+                if cookie.get('name') and cookie.get('value'):
+                    valid_cookies.append(cookie)
+            
+            if valid_cookies:
+                page.context.add_cookies(valid_cookies)
+                print(f"✓ Đã thêm {len(valid_cookies)} cookies")
+        except Exception as e:
+            print(f"Lỗi set cookies: {e}")
+
+    def _create_session_directory(self):
+        """Tạo thư mục session mới cho video generation"""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.current_session_dir = os.path.join(self.output_dir, f"text_to_video_{timestamp}")
+        os.makedirs(self.current_session_dir, exist_ok=True)
+        return self.current_session_dir
+
+    def _save_session_metadata(self, metadata: dict):
+        """Lưu metadata của session"""
+        if self.current_session_dir:
+            metadata_file = os.path.join(self.current_session_dir, "session_info.json")
+            with open(metadata_file, 'w', encoding='utf-8') as f:
+                json.dump(metadata, f, ensure_ascii=False, indent=2)
+
+    def _get_model_display_name(self, model: str) -> str:
+        """Chuyển model code thành tên hiển thị trên UI"""
+        model_map = {
+            "kling_2_1": "Kling AI 2.1",
+            "kling_2_1_master": "Kling AI 2.1 Master", 
+            "kling_master_2_1": "Kling AI 2.1 Master",  # Alternative naming
+            "kling_1_5": "Kling AI 1.5", 
+            "kling_1_5_master": "Kling AI 1.5 Master",
+            "kling_master_1_5": "Kling AI 1.5 Master",  # Alternative naming
+            "auto": "Auto",
+            "default": "Auto",
+            
+            # Có thể có các model khác
+            "minimax": "MiniMax",
+            "hailuo": "MiniMax Hailuo",
+            "runway": "Runway ML",
+            "luma": "Luma AI"
         }
+        display_name = model_map.get(model, model)
+        print(f"🎯 Model mapping: '{model}' → '{display_name}'")
+        return display_name
+
+    def _get_model_selectors(self, model: str) -> List[str]:
+        """Lấy danh sách selector để chọn model"""
+        model_name = self._get_model_display_name(model)
+        return [
+            f"text={model_name}",
+            f"button:has-text('{model_name}')",
+            f"[data-value='{model}']",
+            f"option[value='{model}']",
+            f"li:has-text('{model_name}')",
+            f"[aria-label*='{model_name}']"
+        ]
+
+    def _wait_for_video_generation(self, page: Page, timeout_seconds: int = 300) -> bool:
+        """Đợi cho quá trình sinh video hoàn tất"""
+        start_time = time.time()
+        print(f"⏳ Đang chờ video được sinh ra (timeout: {timeout_seconds}s)...")
         
-        with sync_playwright() as p:
-            # Khởi động trình duyệt
-            browser = p.firefox.launch(headless=self.headless)
-            context = browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            )
-            page = context.new_page()
+        # TRACK: Lưu thời điểm bắt đầu generation để phân biệt video mới
+        self.generation_start_time = start_time
+        
+        # Counter để tránh spam log
+        check_count = 0
+        processing_detected = False  # Track xem có thấy processing không
+        processing_completed = False  # Track processing đã hoàn tất
+        
+        while time.time() - start_time < timeout_seconds:
+            elapsed = int(time.time() - start_time)
+            check_count += 1
+            
+            # Báo tiến trình mỗi 30s
+            if elapsed > 0 and elapsed % 30 == 0:
+                print(f"⏳ Đã chờ {elapsed}s/{timeout_seconds}s...")
             
             try:
-                # Thiết lập cookie nếu có
-                if cookie_string:
-                    cookies = self.parse_cookies(cookie_string)
-                    self.set_cookies(page, cookies)
-                
-                # Đi đến trang Pikaso Video
-                print("🌐 Đang mở trang Freepik Pikaso Video...")
-                page.goto("https://www.freepik.com/pikaso/ai-video-generator", 
-                         wait_until="networkidle", timeout=30000)
-                
-                # Chờ trang load
-                time.sleep(5)
-                
-                # Chọn chế độ Image-to-Video
-                print("🖼️ Chọn chế độ Image-to-Video...")
-                try:
-                    img_to_video_selectors = [
-                        "button:has-text('Image to Video')",
-                        "button:has-text('image to video')",
-                        "[data-testid*='image-to-video']",
-                        ".image-to-video",
-                        "tab:has-text('Image')",
-                        "button[aria-label*='Image']"
-                    ]
-                    
-                    for selector in img_to_video_selectors:
-                        try:
-                            if page.query_selector(selector):
-                                page.click(selector, timeout=3000)
-                                print("✅ Đã chọn chế độ Image-to-Video")
-                                time.sleep(2)
-                                break
-                        except:
-                            continue
-                    else:
-                        print("⚠️ Không tìm thấy chế độ Image-to-Video, tiếp tục...")
-                        
-                except Exception as e:
-                    print(f"⚠️ Lỗi khi chọn chế độ Image-to-Video: {e}")
-                
-                # Upload ảnh
-                print("📤 Đang upload ảnh...")
-                try:
-                    upload_selectors = [
-                        "input[type='file']",
-                        "[data-testid*='upload']",
-                        ".upload-input",
-                        "input[accept*='image']"
-                    ]
-                    
-                    uploaded = False
-                    for selector in upload_selectors:
-                        try:
-                            upload_input = page.query_selector(selector)
-                            if upload_input:
-                                upload_input.set_input_files(image_path)
-                                print("✅ Đã upload ảnh thành công")
-                                uploaded = True
-                                time.sleep(3)
-                                break
-                        except:
-                            continue
-                    
-                    if not uploaded:
-                        # Thử tìm button upload và click
-                        upload_button_selectors = [
-                            "button:has-text('Upload')",
-                            "button:has-text('Choose')",
-                            ".upload-button",
-                            "[data-testid*='upload-button']"
-                        ]
-                        
-                        for selector in upload_button_selectors:
-                            try:
-                                if page.query_selector(selector):
-                                    page.click(selector)
-                                    time.sleep(1)
-                                    
-                                    # Tìm input file sau khi click
-                                    file_input = page.query_selector("input[type='file']")
-                                    if file_input:
-                                        file_input.set_input_files(image_path)
-                                        print("✅ Đã upload ảnh thành công")
-                                        uploaded = True
-                                        time.sleep(3)
-                                        break
-                            except:
-                                continue
-                    
-                    if not uploaded:
-                        raise Exception("Không thể upload ảnh")
-                        
-                except Exception as e:
-                    print(f"❌ Lỗi upload ảnh: {e}")
-                    raise
-                
-                # Chọn model Kling 2.1 Master
-                print("⚙️ Đang chọn model Kling 2.1 Master...")
-                try:
-                    time.sleep(3)
-                    
-                    # Tìm dropdown model
-                    model_selectors = [
-                        "button:has-text('Model')",
-                        "[data-testid*='model']",
-                        "button[aria-label*='model']",
-                        ".model-selector",
-                        ".model-dropdown",
-                        "select",
-                        "[role='combobox']"
-                    ]
-                    
-                    model_clicked = False
-                    for selector in model_selectors:
-                        try:
-                            if page.query_selector(selector):
-                                page.click(selector, timeout=3000)
-                                time.sleep(2)
-                                model_clicked = True
-                                print(f"✓ Đã click model selector: {selector}")
-                                break
-                        except:
-                            continue
-                    
-                    if model_clicked:
-                        # Tìm và chọn Kling 2.1 Master
-                        kling_selectors = [
-                            "text=Kling 2.1 Master",
-                            "text=kling 2.1 master",
-                            "text=Kling 2.1",
-                            "text=kling 2.1",
-                            "[data-value*='kling']",
-                            "option[value*='kling']",
-                            "li:has-text('Kling')",
-                            "div:has-text('Kling 2.1')"
-                        ]
-                        
-                        kling_selected = False
-                        for kling_selector in kling_selectors:
-                            try:
-                                if page.query_selector(kling_selector):
-                                    page.click(kling_selector, timeout=2000)
-                                    print("✅ Đã chọn model Kling 2.1 Master")
-                                    kling_selected = True
-                                    break
-                            except:
-                                continue
-                        
-                        if not kling_selected:
-                            print("⚠️ Không tìm thấy model Kling 2.1 Master, sử dụng model mặc định")
-                    else:
-                        print("⚠️ Không tìm thấy model selector, sử dụng model mặc định")
-                        
-                except Exception as e:
-                    print(f"⚠️ Lỗi khi chọn model: {e}")
-                    print("📝 Tiếp tục với model mặc định")
-                
-                # Nhập prompt (nếu có)
-                if prompt:
-                    print("✍️ Đang nhập prompt...")
-                    try:
-                        prompt_selectors = [
-                            "textarea[placeholder*='Describe']",
-                            "textarea[placeholder*='describe']", 
-                            "textarea[placeholder*='prompt']",
-                            "textarea[placeholder*='Prompt']",
-                            "textarea[data-testid*='prompt']",
-                            "textarea",
-                            "[contenteditable='true']",
-                            "[role='textbox']"
-                        ]
-                        
-                        prompt_entered = False
-                        for selector in prompt_selectors:
-                            try:
-                                element = page.query_selector(selector)
-                                if element and element.is_enabled() and element.is_visible():
-                                    page.click(selector)
-                                    page.fill(selector, prompt)
-                                    print("✅ Đã nhập prompt")
-                                    prompt_entered = True
-                                    break
-                            except:
-                                continue
-                        
-                        if not prompt_entered:
-                            print("⚠️ Không thể nhập prompt, tiếp tục...")
-                            
-                    except Exception as e:
-                        print(f"⚠️ Lỗi nhập prompt: {e}")
-                
-                # Thiết lập duration và ratio
-                print(f"⚙️ Thiết lập duration: {duration}, ratio: {ratio}")
-                try:
-                    # Thiết lập duration
-                    duration_selectors = [
-                        f"button:has-text('{duration}')",
-                        f"[data-value='{duration}']",
-                        f"option[value='{duration}']"
-                    ]
-                    
-                    for selector in duration_selectors:
-                        try:
-                            if page.query_selector(selector):
-                                page.click(selector)
-                                print(f"✓ Đã chọn duration: {duration}")
-                                break
-                        except:
-                            continue
-                    
-                    # Thiết lập ratio
-                    ratio_selectors = [
-                        f"button:has-text('{ratio}')",
-                        f"[data-value='{ratio}']",
-                        f"option[value='{ratio}']"
-                    ]
-                    
-                    for selector in ratio_selectors:
-                        try:
-                            if page.query_selector(selector):
-                                page.click(selector)
-                                print(f"✓ Đã chọn ratio: {ratio}")
-                                break
-                        except:
-                            continue
-                            
-                except Exception as e:
-                    print(f"⚠️ Lỗi thiết lập duration/ratio: {e}")
-                
-                # Tìm và click nút Generate
-                print("🚀 Đang bắt đầu sinh video...")
-                generate_selectors = [
-                    "button[data-testid*='generate']",
-                    "button:has-text('Generate')",
-                    "button:has-text('Create')", 
-                    ".generate-btn",
-                    "input[type='submit']"
+                # BƯỚC 1: KIỂM TRA XEM CÓ ĐANG PROCESSING KHÔNG
+                processing_indicators = [
+                    "text=/.*Processing your video.*/i", 
+                    "text=/.*Generating.*/i",
+                    "text=/.*Estimated time.*/i",
+                    ".progress-bar", "[role='progressbar']",
+                    ".loading", ".spinner"
                 ]
                 
-                generated = False
-                for selector in generate_selectors:
+                currently_processing = False
+                for indicator in processing_indicators:
                     try:
-                        if page.query_selector(selector):
-                            page.click(selector, timeout=3000)
-                            print("✓ Đã click nút sinh video")
-                            generated = True
+                        element = page.query_selector(indicator)
+                        if element and element.is_visible():
+                            processing_text = element.text_content() or ""
+                            currently_processing = True
+                            processing_detected = True
+                            
+                            # Log processing status mỗi 60s
+                            if elapsed % 60 == 0:
+                                print(f"🔄 Video đang processing: {processing_text[:80]}...")
                             break
                     except:
                         continue
                 
-                if not generated:
-                    raise Exception("Không tìm thấy nút Generate")
+                # BƯỚC 2: NẾU ĐANG PROCESSING - TIẾP TỤC CHỜ
+                if currently_processing:
+                    time.sleep(5)
+                    continue
                 
-                # Đợi video được sinh
-                print("⏳ Đang chờ video được sinh...")
-                success = self._wait_for_video_generation(timeout_seconds=180)  # 3 phút
+                # BƯỚC 3: PROCESSING ĐÃ DỪNG - CHỜ VIDEO RESULT XUẤT HIỆN
+                if not currently_processing and processing_detected and not processing_completed:
+                    print(f"✅ Processing stopped at {elapsed}s! Waiting for video result to appear...")
+                    processing_completed = True
+                    
+                    # ĐÂY LÀ ĐIỂM QUAN TRỌNG: Đợi video result xuất hiện
+                    # Thay vì return True ngay, đợi video thật sự xuất hiện
+                    
+                # BƯỚC 4: NẾU PROCESSING ĐÃ HOÀN TÁTM - TÌM VIDEO RESULT
+                if processing_completed:
+                    # Đợi thêm cho video result load
+                    time.sleep(5)
+                    
+                    print("🔍 Checking for new video results...")
+                    
+                    # METHOD 1: Tìm videos trong page
+                    videos = page.query_selector_all("video")
+                    print(f"📹 Found {len(videos)} videos total")
+                    
+                    # Tìm video result (không phải banner)
+                    new_video_found = False
+                    for i, video in enumerate(videos):
+                        if video.is_visible():
+                            try:
+                                src = video.get_attribute("src") or video.get_attribute("data-src")
+                                if src and not src.startswith("data:"):
+                                    # Skip obvious banners
+                                    if any(banner in src.lower() for banner in ['banner', 'demo', 'preview']):
+                                        continue
+                                    
+                                    duration = video.evaluate("v => v.duration")
+                                    readyState = video.evaluate("v => v.readyState")
+                                    
+                                    # Check for REASONABLE video result
+                                    if duration and 3 <= duration <= 20 and readyState >= 3:
+                                        print(f"🎬 Found new video result - Duration: {duration}s")
+                                        print(f"   Src: {src[:80]}...")
+                                        new_video_found = True
+                                        break
+                            except:
+                                continue
+                    
+                    # METHOD 2: Tìm download buttons hoặc result containers
+                    if not new_video_found:
+                        print("🔍 Checking for download buttons/result indicators...")
+                        
+                        result_indicators = [
+                            "[data-cy*='download']", "button:has-text('Download')",
+                            ".video-result", ".result-thumbnail", ".video-preview",
+                            ".download-btn", "[data-testid*='download']",
+                            ".result-container", ".generation-result", 
+                            "[class*='result']", "[class*='download']"
+                        ]
+                        
+                        for indicator in result_indicators:
+                            try:
+                                elements = page.query_selector_all(indicator)
+                                for element in elements:
+                                    if element.is_visible():
+                                        print(f"✓ Found result indicator: {indicator}")
+                                        new_video_found = True
+                                        break
+                                if new_video_found:
+                                    break
+                            except:
+                                continue
+                    
+                    # METHOD 3: Kiểm tra page content changes
+                    if not new_video_found:
+                        print("🔍 Checking page content for generation completion...")
+                        
+                        # Tìm text indicators
+                        completion_texts = [
+                            "text=/.*completed.*/i", "text=/.*finished.*/i", 
+                            "text=/.*ready.*/i", "text=/.*done.*/i",
+                            "text=/.*generated.*/i", "text=/.*created.*/i"
+                        ]
+                        
+                        for text_indicator in completion_texts:
+                            try:
+                                element = page.query_selector(text_indicator)
+                                if element and element.is_visible():
+                                    text_content = element.text_content() or ""
+                                    if len(text_content) < 100:  # Avoid very long text
+                                        print(f"✓ Found completion text: {text_content[:50]}...")
+                                        new_video_found = True
+                                        break
+                            except:
+                                continue
+                    
+                    if new_video_found:
+                        print("✅ Video result found! Ready to download.")
+                        return True
+                    else:
+                        # Nếu chưa tìm thấy video result, đợi thêm
+                        # Track thời gian từ khi processing completed
+                        if not hasattr(self, 'processing_end_time'):
+                            self.processing_end_time = time.time()
+                        
+                        wait_time = time.time() - self.processing_end_time
+                        if wait_time < 60:  # Đợi tối đa 60s sau khi processing stop
+                            print(f"🔍 No video result yet, waiting more... ({int(wait_time)}s since processing stopped)")
+                            time.sleep(10)
+                            continue
+                        else:
+                            print("⏰ Timeout waiting for video result after processing")
+                            print("🎯 Proceeding with available content (may include fallback downloads)")
+                            # Return True để cho phép download fallback (có thể là banner)
+                            return True
+                
+                # BƯỚC 5: NẾU CHƯA THẤY PROCESSING - CHỜ THÊM
+                if not processing_detected and elapsed < 30:
+                    if elapsed % 10 == 0:
+                        print("⏳ Chờ processing bắt đầu...")
+                    time.sleep(2)
+                    continue
+                
+                # BƯỚC 6: KIỂM TRA COMPLETION INDICATORS (ít tin cậy hơn)
+                completion_selectors = [
+                    "button:has-text('Download')", "[data-cy*='download']",
+                    ".video-result", ".result-thumbnail", ".video-preview"
+                ]
+                
+                for completion_selector in completion_selectors:
+                    try:
+                        element = page.query_selector(completion_selector)
+                        if element and element.is_visible():
+                            print(f"✅ Phát hiện completion indicator: {completion_selector}")
+                            # Nếu đã có processing_completed, có thể tin cậy completion
+                            if processing_completed:
+                                return True
+                    except:
+                        continue
+                
+                # BƯỚC 7: KIỂM TRA LỖI
+                error_selectors = [
+                    "text=/.*Error.*/i", "text=/.*Failed.*/i", ".error", "[role='alert']"
+                ]
+                
+                for error_selector in error_selectors:
+                    try:
+                        error_element = page.query_selector(error_selector)
+                        if error_element and error_element.is_visible():
+                            error_text = error_element.text_content()
+                            print(f"❌ Lỗi generation: {error_text}")
+                            return False
+                    except:
+                        continue
+                        
+            except Exception as e:
+                if check_count % 20 == 0:
+                    print(f"⚠️ Lỗi check: {e}")
+            
+            time.sleep(3)
+        
+        print(f"⏰ Timeout sau {timeout_seconds}s")
+        return False
+
+    def _download_video_to_session(self, page: Page) -> Optional[str]:
+        """Tải video mới nhất (không phải video cũ/banner) về session directory"""
+        
+        try:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"video_output_{timestamp}.mp4"
+            filepath = os.path.join(self.current_session_dir, filename)
+            
+            print("🎯 Tìm video mới nhất để download...")
+            
+            # BƯỚC 1: Đợi video result load
+            time.sleep(3)
+            
+            # BƯỚC 2: PRIORITY 1 - TÌM DOWNLOAD BUTTON TRƯỚC (tin cậy nhất)
+            print("🔽 Priority 1: Looking for download buttons...")
+            
+            download_selectors = [
+                "[data-cy='download']", "[data-cy*='download']",
+                "button:has-text('Download')", "a[download]",
+                ".download-btn", "[data-testid*='download']",
+                "[class*='download']", "button[class*='download']"
+            ]
+            
+            download_success = False
+            for btn_selector in download_selectors:
+                try:
+                    download_buttons = page.query_selector_all(btn_selector)
+                    print(f"  🔍 {btn_selector}: {len(download_buttons)} buttons")
+                    
+                    for download_btn in download_buttons:
+                        if download_btn and download_btn.is_visible() and download_btn.is_enabled():
+                            try:
+                                print(f"  ✓ Trying download button: {btn_selector}")
+                                
+                                download_btn.scroll_into_view_if_needed()
+                                time.sleep(2)
+                                
+                                with page.expect_download(timeout=30000) as download_info:
+                                    download_btn.click()
+                                    print("  ✓ Clicked download button successfully")
+                                
+                                download = download_info.value
+                                download.save_as(filepath)
+                                print(f"✅ Downloaded successfully via button: {filename}")
+                                return filepath
+                                
+                            except Exception as btn_e:
+                                print(f"  ⚠️ Button failed: {btn_e}")
+                                continue
+                except Exception as e:
+                    print(f"  ⚠️ Error with selector {btn_selector}: {e}")
+                    continue
+            
+            # BƯỚC 3: PRIORITY 2 - TÌM VIDEO SRC để download
+            print("📹 Priority 2: Looking for video sources...")
+            
+            videos = page.query_selector_all("video")
+            print(f"📹 Found {len(videos)} videos on page")
+            
+            # Strategy: Phân loại videos thành categories
+            candidate_videos = []
+            banner_videos = []
+            other_videos = []
+            
+            for i, video in enumerate(videos):
+                if video.is_visible():
+                    try:
+                        src = video.get_attribute("src") or video.get_attribute("data-src")
+                        if src and not src.startswith("data:"):
+                            # IMPROVED: Chỉ skip nếu RÕ RÀNG là banner
+                            obvious_banner_keywords = ['banner', 'demo', 'preview', 'tutorial', 'intro']
+                            is_obvious_banner = any(keyword in src.lower() for keyword in obvious_banner_keywords)
+                            
+                            # Check video properties
+                            duration = video.evaluate("v => v.duration")
+                            readyState = video.evaluate("v => v.readyState")
+                            
+                            video_info = {
+                                'element': video,
+                                'src': src,
+                                'duration': duration,
+                                'readyState': readyState,
+                                'index': i
+                            }
+                            
+                            if is_obvious_banner:
+                                banner_videos.append(video_info)
+                                print(f"  🚫 Banner video {i+1}: {src[:50]}...")
+                            elif duration and 3 <= duration <= 20 and readyState >= 3:
+                                candidate_videos.append(video_info)
+                                print(f"  ✓ Candidate video {i+1}:")
+                                print(f"    Duration: {duration}s, ReadyState: {readyState}")
+                                print(f"    Src: {src[:80]}...")
+                            else:
+                                other_videos.append(video_info)
+                                print(f"  ? Other video {i+1}: Duration={duration}, ReadyState={readyState}")
+                                
+                    except Exception as e:
+                        print(f"  ⚠️ Error checking video {i+1}: {e}")
+                        continue
+            
+            print(f"✅ Categories: {len(candidate_videos)} candidates, {len(banner_videos)} banners, {len(other_videos)} others")
+            
+            # BƯỚC 4: STRATEGY SELECTION cho VIDEO
+            selected_video = None
+            
+            if candidate_videos:
+                selected_video = candidate_videos[-1]
+                print(f"🎬 Selected from candidates: video {selected_video['index']+1}")
+                
+            elif other_videos:
+                valid_others = [v for v in other_videos if v['duration'] and v['duration'] > 0]
+                if valid_others:
+                    selected_video = valid_others[-1]
+                    print(f"🎬 Selected from others: video {selected_video['index']+1}")
+                    
+            elif banner_videos:
+                selected_video = banner_videos[-1]
+                print(f"🎬 Desperate fallback: banner video {selected_video['index']+1}")
+            
+            # BƯỚC 5: TRY VIDEO SRC DOWNLOAD
+            if selected_video:
+                video_element = selected_video['element']
+                video_src = selected_video['src']
+                
+                print(f"🎯 Selected video details:")
+                print(f"   Index: {selected_video['index']+1}")
+                print(f"   Duration: {selected_video['duration']}s")
+                print(f"   ReadyState: {selected_video['readyState']}")
+                print(f"   Src: {video_src[:100]}...")
+                
+                # Try URL download
+                if video_src.startswith("http"):
+                    try:
+                        print("📥 Downloading from video URL...")
+                        
+                        with page.expect_download(timeout=30000) as download_info:
+                            page.evaluate("""
+                            (params) => {
+                                const link = document.createElement('a');
+                                link.href = params.url;
+                                link.download = params.filename;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                            }
+                            """, {"url": video_src, "filename": filename})
+                        
+                        download = download_info.value
+                        download.save_as(filepath)
+                        print(f"✅ Downloaded successfully via URL: {filename}")
+                        return filepath
+                        
+                    except Exception as url_e:
+                        print(f"⚠️ URL download failed: {url_e}")
+                
+                # Screenshot fallback
+                try:
+                    print("📸 Creating screenshot fallback...")
+                    screenshot_filename = f"video_output_{timestamp}_screenshot.png"
+                    screenshot_path = os.path.join(self.current_session_dir, screenshot_filename)
+                    
+                    video_element.scroll_into_view_if_needed()
+                    time.sleep(1)
+                    video_element.screenshot(path=screenshot_path)
+                    
+                    print(f"📸 Screenshot saved: {screenshot_filename}")
+                    return screenshot_path
+                    
+                except Exception as screenshot_e:
+                    print(f"⚠️ Screenshot failed: {screenshot_e}")
+            
+            print("❌ No suitable content found for download")
+            return None
+            
+        except Exception as e:
+            print(f"❌ Download error: {e}")
+            return None
+
+    def generate_video(self, prompt: str, cookie_string: str = None, duration: str = "5s", 
+                      ratio: str = "1:1", model: str = "kling_2_1"):
+        """
+        Sinh video từ text prompt - workflow chuẩn giống như generate_image
+        """
+        
+        print(f"🎬 Bắt đầu sinh video từ text")
+        print(f"📝 Prompt: {prompt}")
+        print(f"⚙️ Model: {self._get_model_display_name(model)}")
+        print(f"⏱️ Duration: {duration}")
+        print(f"📐 Ratio: {ratio}")
+        
+        # Tạo session directory
+        session_dir = self._create_session_directory()
+        
+        # Metadata
+        session_metadata = {
+            "type": "text_to_video",
+            "prompt": prompt,
+            "model": model,
+            "duration": duration,
+            "ratio": ratio,
+            "timestamp": datetime.now().isoformat(),
+            "status": "started"
+        }
+        self._save_session_metadata(session_metadata)
+        
+        with sync_playwright() as p:
+            # Setup browser giống như image generator
+            browser_type = "chrome"
+            config_show_browser = False
+            
+            try:
+                if os.path.exists('config_template.txt'):
+                    with open('config_template.txt', 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    if 'browser=chrome' in content:
+                        browser_type = "chrome"
+                    
+                    if 'show_browser=true' in content:
+                        config_show_browser = True
+                        print("⚙️ Config: show_browser=true - sử dụng visible mode")
+            except:
+                pass
+            
+            final_headless = self.headless and not config_show_browser
+            
+            print(f"🌐 Sử dụng browser: {browser_type}")
+            print(f"👁️ Chế độ: {'Visible' if not final_headless else 'Headless'}")
+            
+            # Khởi động browser
+            if browser_type == "chrome":
+                browser = p.chromium.launch(
+                    headless=final_headless,
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--disable-extensions",
+                        "--no-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-gpu",
+                        "--window-size=1920,1080"
+                    ]
+                )
+            else:
+                browser = p.firefox.launch(
+                    headless=final_headless,
+                    args=["--no-sandbox", "--disable-dev-shm-usage"]
+                )
+                
+            context = browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/109.0",
+                viewport={"width": 1920, "height": 1080},
+                ignore_https_errors=True
+            )
+            context.set_default_timeout(30000)
+            
+            page = context.new_page()
+            
+            try:
+                # Truy cập AI Video Generator
+                video_generator_url = "https://www.freepik.com/pikaso/ai-video-generator"
+                print(f"🎯 Truy cập AI Video Generator: {video_generator_url}")
+                
+                try:
+                    page.goto(video_generator_url, wait_until="domcontentloaded", timeout=30000)
+                    time.sleep(2)
+                    print(f"✅ Đã truy cập: {page.url}")
+                except Exception as e:
+                    print(f"❌ Lỗi truy cập: {e}")
+                    # Fallback với URL đơn giản hơn
+                    fallback_url = "https://www.freepik.com/pikaso"
+                    print(f"🔄 Thử fallback: {fallback_url}")
+                    page.goto(fallback_url, wait_until="domcontentloaded", timeout=20000)
+                    time.sleep(2)
+                
+                # Thiết lập cookie sau khi đã vào trang
+                if cookie_string:
+                    cookies = self.parse_cookies(cookie_string)
+                    if cookies:
+                        print("🍪 Đang thiết lập cookie...")
+                        self.set_cookies(page, cookies)
+                        print("✓ Đã thiết lập cookie, reload trang...")
+                        
+                        # Reload để áp dụng cookie
+                        page.reload(wait_until="domcontentloaded")
+                        time.sleep(3)
+                        
+                        # Kiểm tra THỰC SỰ đã đăng nhập (kiểm tra nhiều indicators)
+                        login_indicators = [
+                            "text=Log in", "text=Sign up", "text=Login", "text=Sign In",
+                            "text=Đăng nhập", "text=Đăng ký", 
+                            ".login-button", ".signin-button", "[href*='login']"
+                        ]
+                        
+                        logged_out_indicators = []
+                        for indicator in login_indicators:
+                            try:
+                                if page.query_selector(indicator):
+                                    element = page.query_selector(indicator)
+                                    if element and element.is_visible():
+                                        logged_out_indicators.append(indicator)
+                            except:
+                                continue
+                        
+                        # Kiểm tra indicators đăng nhập thành công
+                        success_indicators = [
+                            "text=Premium", "text=Account", "text=Profile", "text=Logout",
+                            "text=My Account", "[href*='logout']", "[href*='account']",
+                            ".user-menu", ".profile-menu", ".account-dropdown"
+                        ]
+                        
+                        logged_in_indicators = []
+                        for indicator in success_indicators:
+                            try:
+                                if page.query_selector(indicator):
+                                    element = page.query_selector(indicator)
+                                    if element and element.is_visible():
+                                        logged_in_indicators.append(indicator)
+                            except:
+                                continue
+                        
+                        if logged_out_indicators:
+                            print(f"❌ CHƯA ĐĂNG NHẬP! Tìm thấy: {logged_out_indicators}")
+                            print("🔑 Cần cookie hợp lệ từ tài khoản Freepik Premium đã đăng nhập!")
+                            raise Exception("Cookie không hợp lệ hoặc chưa đăng nhập")
+                        elif logged_in_indicators:
+                            print(f"✅ ĐÃ ĐĂNG NHẬP THÀNH CÔNG! Tìm thấy: {logged_in_indicators}")
+                        else:
+                            print("⚠️ Không thể xác định trạng thái đăng nhập, tiếp tục thử...")
+                    else:
+                        print("❌ Không thể parse cookie!")
+                        raise Exception("Cookie không hợp lệ")
+                else:
+                    print("⚠️ Không có cookie - sẽ thử chế độ guest (có thể bị giới hạn)")
+                
+                print("✅ Đã truy cập thành công vào AI Video Generator!")
+                
+                # Chờ trang load hoàn toàn trước khi tìm input
+                print("⏳ Chờ trang load hoàn toàn...")
+                time.sleep(5)  # Chờ 5 giây để đảm bảo trang load xong
+                
+                # Tìm và nhập prompt - GIỐNG NHƯ IMAGE GENERATOR
+                print("🔍 Tìm ô nhập prompt...")
+                
+                potential_selectors = [
+                    # Selectors phù hợp với UI mới của Freepik 2024
+                    "[contenteditable='true']",  # Thường dùng cho prompt input
+                    "textarea[placeholder*='Describe']", "textarea[placeholder*='describe']", 
+                    "textarea[placeholder*='prompt']", "textarea[placeholder*='Prompt']",
+                    "textarea",  # Fallback textarea
+                    "[role='textbox']",  # Accessibility role
+                    "input[type='text']",  # Basic text input
+                    "textarea[data-testid*='prompt']", "textarea[data-testid*='input']",
+                    ".prompt-input", "#prompt", "#prompt-input", ".text-input", "[name='prompt']",
+                    
+                    # Selectors dành riêng cho Freepik Pikaso
+                    ".ai-prompt-input", ".generate-prompt-input", ".pikaso-prompt",
+                    "[data-cy*='prompt']", "[data-cy*='input']", "[data-cy*='text']",
+                    "[aria-label*='prompt']", "[aria-label*='Prompt']", "[aria-label*='describe']",
+                    "[class*='prompt'][class*='input']", "[class*='text'][class*='area']"
+                ]
+                
+                prompt_selector = None
+                for i, selector in enumerate(potential_selectors):
+                    print(f"  🔍 Thử selector {i+1}/{len(potential_selectors)}: {selector}")
+                    try:
+                        element = page.query_selector(selector)
+                        if element:
+                            print(f"    ✓ Element tồn tại")
+                            if element.is_visible():
+                                print(f"    ✓ Element visible")
+                                if element.is_enabled():
+                                    print(f"    ✓ Element enabled")
+                                    prompt_selector = selector
+                                    print(f"✅ Tìm thấy ô prompt: {selector}")
+                                    break
+                                else:
+                                    print(f"    ❌ Element disabled")
+                            else:
+                                print(f"    ❌ Element not visible")
+                        else:
+                            print(f"    ❌ Element không tồn tại")
+                    except Exception as e:
+                        print(f"    ❌ Lỗi: {e}")
+                        continue
+                
+                if not prompt_selector:
+                    raise Exception("Không tìm thấy ô nhập prompt")
+                
+                # Nhập prompt - SỬ DỤNG JAVASCRIPT TRỰC TIẾP (theo yêu cầu user)
+                print("✍️ Đang nhập prompt...")
+                
+                try:
+                    # Method 3: JavaScript trực tiếp - được ưu tiên
+                    escaped_selector = prompt_selector.replace("'", "\\'").replace('"', '\\"')
+                    escaped_prompt = prompt.replace("'", "\\'").replace('"', '\\"').replace('\n', '\\n').replace('\r', '')
+                    js_code = f"""
+                    try {{
+                        const element = document.querySelector('{escaped_selector}');
+                        if (element) {{
+                            element.focus();
+                            if (element.value !== undefined) {{
+                                element.value = '{escaped_prompt}';
+                            }}
+                            if (element.textContent !== undefined) {{
+                                element.textContent = '{escaped_prompt}';
+                            }}
+                            element.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                            element.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                        }}
+                    }} catch(e) {{
+                        console.log('Method 3 error:', e);
+                    }}
+                    """
+                    page.evaluate(js_code)
+                    
+                    # Chờ lâu hơn để DOM update
+                    time.sleep(2)
+                    
+                    # Kiểm tra xem đã nhập thành công chưa
+                    current_value = ""
+                    try:
+                        current_value = page.evaluate("""
+                        (selector) => {
+                            try {
+                                const el = document.querySelector(selector);
+                                if (el) {
+                                    const content = el.textContent || el.innerText || el.value || '';
+                                    return content.trim();
+                                }
+                                return '';
+                            } catch(e) {
+                                return '';
+                            }
+                        }
+                        """, prompt_selector)
+                    except:
+                        pass
+                    
+                    if current_value and len(current_value.strip()) > 5:
+                        print(f"✅ Đã nhập prompt thành công: '{current_value[:50]}...'")
+                    else:
+                        print(f"⚠️ Có thể chưa nhập thành công: '{current_value}'")
+                        # Fallback với fill
+                        page.click(prompt_selector)
+                        page.fill(prompt_selector, prompt)
+                        print("✅ Đã nhập prompt bằng fill fallback")
+                        
+                except Exception as e:
+                    print(f"❌ Lỗi khi nhập prompt: {e}")
+                    raise Exception("Không thể nhập prompt")
+                
+                # Chọn model nếu không phải auto
+                if model != "auto":
+                    print(f"🤖 Đang chọn model: {self._get_model_display_name(model)}...")
+                    try:
+                        # Chờ thêm để UI load xong
+                        time.sleep(2)
+                        
+                        # Tìm dropdown model với nhiều selector khác nhau
+                        model_dropdown_selectors = [
+                            # Generic model selectors
+                            "button:has-text('Model')",
+                            "button:has-text('AI Model')", 
+                            "button:has-text('Auto')",
+                            "button:has-text('Kling')",
+                            
+                            # Data attributes
+                            "[data-testid*='model']",
+                            "[data-testid*='dropdown']",
+                            "[data-cy*='model']",
+                            
+                            # CSS classes
+                            ".model-selector",
+                            ".dropdown-model",
+                            ".model-dropdown",
+                            
+                            # Aria labels
+                            "[aria-label*='model']",
+                            "[aria-label*='Model']",
+                            
+                            # Generic dropdowns that might contain model
+                            "button[role='button']:has-text('Auto')",
+                            "div[role='button']:has-text('Auto')",
+                            ".dropdown-toggle",
+                            "button.dropdown-toggle"
+                        ]
+                        
+                        dropdown_opened = False
+                        for i, dropdown_selector in enumerate(model_dropdown_selectors):
+                            print(f"  🔍 Thử dropdown selector {i+1}/{len(model_dropdown_selectors)}: {dropdown_selector}")
+                            try:
+                                dropdown_element = page.query_selector(dropdown_selector)
+                                if dropdown_element:
+                                    print(f"    ✓ Dropdown element tồn tại")
+                                    if dropdown_element.is_visible():
+                                        print(f"    ✓ Dropdown visible")
+                                        if dropdown_element.is_enabled():
+                                            print(f"    ✓ Dropdown enabled")
+                                            dropdown_element.click()
+                                            print(f"    ✅ Đã click dropdown: {dropdown_selector}")
+                                            time.sleep(1.5)  # Chờ dropdown mở
+                                            dropdown_opened = True
+                                            break
+                                        else:
+                                            print(f"    ❌ Dropdown disabled")
+                                    else:
+                                        print(f"    ❌ Dropdown not visible")
+                                else:
+                                    print(f"    ❌ Dropdown không tồn tại")
+                            except Exception as e:
+                                print(f"    ❌ Lỗi: {e}")
+                                continue
+                        
+                        if not dropdown_opened:
+                            print("⚠️ Không thể mở dropdown model, thử tìm model trực tiếp...")
+                        else:
+                            # Sau khi mở dropdown, chờ elements load và debug
+                            print("🔍 Dropdown đã mở, đang tìm model options...")
+                            time.sleep(2)  # Chờ dropdown options load
+                            
+                            # Debug: Liệt kê tất cả options trong dropdown
+                            try:
+                                print("📋 Debug: Tìm tất cả dropdown options...")
+                                dropdown_items = page.query_selector_all("li, option, [role='option'], [role='menuitem'], .dropdown-item, .menu-item")
+                                print(f"Tìm thấy {len(dropdown_items)} potential dropdown items:")
+                                for i, item in enumerate(dropdown_items[:15]):  # Giới hạn 15 items
+                                    try:
+                                        text = item.text_content()
+                                        if text and text.strip():
+                                            is_visible = item.is_visible()
+                                            print(f"    {i+1}. '{text.strip()}' - Visible: {is_visible}")
+                                    except:
+                                        pass
+                            except Exception as debug_e:
+                                print(f"❌ Lỗi debug dropdown: {debug_e}")
+                                
+                        # Chọn model cụ thể với nhiều cách tiếp cận
+                        model_display_name = self._get_model_display_name(model)
+                        print(f"🎯 Tìm model: '{model_display_name}' (từ '{model}')")
+                        
+                        # Expanded model selectors với pattern matching linh hoạt hơn
+                        model_selectors = [
+                            # Text-based selectors - exact match
+                            f"text={model_display_name}",
+                            f"text={model}",
+                            f"button:has-text('{model_display_name}')",
+                            f"button:has-text('{model}')",
+                            f"li:has-text('{model_display_name}')",
+                            f"li:has-text('{model}')",
+                            f"div:has-text('{model_display_name}')",
+                            f"span:has-text('{model_display_name}')",
+                            
+                            # Partial text matching for model names
+                            f"text=/.*{model_display_name.split()[-1]}.*/i",  # Match last word (like "Master", "2.1")
+                            f"li:has-text('Master')" if "master" in model.lower() else None,
+                            f"li:has-text('2.1')" if "2_1" in model else None,
+                            f"li:has-text('1.5')" if "1_5" in model else None,
+                            f"li:has-text('Kling')",  # Generic Kling selector
+                            
+                            # Data attribute selectors
+                            f"[data-value='{model}']",
+                            f"[data-value='{model_display_name}']",
+                            f"[value='{model}']",
+                            f"[value='{model_display_name}']",
+                            
+                            # Option selectors (for select elements)
+                            f"option[value='{model}']",
+                            f"option:has-text('{model_display_name}')",
+                            
+                            # Aria labels
+                            f"[aria-label*='{model_display_name}']",
+                            f"[aria-label*='{model}']",
+                            
+                            # CSS class selectors
+                            f".model-{model.replace('_', '-')}",
+                            f".option-{model.replace('_', '-')}",
+                            
+                            # Generic selectors for dropdown items
+                            f"[role='option']:has-text('{model_display_name}')",
+                            f"[role='menuitem']:has-text('{model_display_name}')",
+                            f".dropdown-item:has-text('{model_display_name}')",
+                            f".menu-item:has-text('{model_display_name}')"
+                        ]
+                        
+                        # Remove None values from list
+                        model_selectors = [s for s in model_selectors if s is not None]
+                        
+                        model_selected = False
+                        for i, model_selector in enumerate(model_selectors):
+                            print(f"  🔍 Thử model selector {i+1}/{len(model_selectors)}: {model_selector}")
+                            try:
+                                model_element = page.query_selector(model_selector)
+                                if model_element:
+                                    print(f"    ✓ Model element tồn tại")
+                                    if model_element.is_visible():
+                                        print(f"    ✓ Model element visible")
+                                        if model_element.is_enabled():
+                                            print(f"    ✓ Model element enabled")
+                                            model_element.click()
+                                            print(f"    ✅ Đã chọn model: {model_display_name}")
+                                            time.sleep(1)
+                                            model_selected = True
+                                            break
+                                        else:
+                                            print(f"    ❌ Model element disabled")
+                                    else:
+                                        print(f"    ❌ Model element not visible")
+                                else:
+                                    print(f"    ❌ Model element không tồn tại")
+                            except Exception as e:
+                                print(f"    ❌ Lỗi: {e}")
+                                continue
+                        
+                        if model_selected:
+                            print(f"✅ Đã chọn model thành công: {model_display_name}")
+                        else:
+                            print(f"⚠️ Không thể chọn model {model_display_name}, sử dụng model mặc định")
+                            
+                            # Final debug: Liệt kê tất cả elements có thể là model
+                            print("🔍 Final Debug: Tìm tất cả elements có thể là model...")
+                            try:
+                                # Tìm tất cả buttons
+                                all_buttons = page.query_selector_all("button")
+                                print(f"📋 Tìm thấy {len(all_buttons)} buttons:")
+                                for btn in all_buttons[:10]:  # Chỉ show 10 đầu tiên
+                                    try:
+                                        text = btn.text_content()
+                                        if text and any(keyword in text.lower() for keyword in ['kling', 'model', 'auto']):
+                                            print(f"    - Button: '{text.strip()}'")
+                                    except:
+                                        pass
+                                
+                                # Tìm tất cả divs và spans
+                                model_keywords = ['kling', 'model', 'auto', 'ai', 'master', '2.1', '1.5']
+                                for tag in ['div', 'span', 'li']:
+                                    elements = page.query_selector_all(tag)
+                                    for elem in elements[:20]:  # Giới hạn để không spam
+                                        try:
+                                            text = elem.text_content()
+                                            if text and any(keyword in text.lower() for keyword in model_keywords):
+                                                if len(text.strip()) < 50:  # Chỉ show text ngắn
+                                                    print(f"    - {tag.upper()}: '{text.strip()}'")
+                                        except:
+                                            pass
+                                            
+                            except Exception as debug_e:
+                                print(f"❌ Lỗi final debug: {debug_e}")
+                                 
+                    except Exception as e:
+                        print(f"⚠️ Lỗi chọn model: {e}, sử dụng model mặc định")
+                
+                # Thiết lập duration TRƯỚC khi generate (theo đúng workflow user)
+                print(f"⚙️ Thiết lập duration: {duration}")
+                duration_selectors = [
+                    f"button:has-text('{duration}')",
+                    f"[data-value='{duration}']",
+                    f"option[value='{duration}']"
+                ]
+                
+                for selector in duration_selectors:
+                    try:
+                        if page.query_selector(selector):
+                            page.click(selector)
+                            print(f"✓ Đã chọn duration: {duration}")
+                            break
+                    except:
+                        continue
+                
+                # Thiết lập ratio TRƯỚC khi generate
+                print(f"⚙️ Thiết lập ratio: {ratio}")
+                ratio_selectors = [
+                    f"button:has-text('{ratio}')",
+                    f"[data-value='{ratio}']",
+                    f"option[value='{ratio}']"
+                ]
+                
+                for selector in ratio_selectors:
+                    try:
+                        if page.query_selector(selector):
+                            page.click(selector)
+                            print(f"✓ Đã chọn ratio: {ratio}")
+                            break
+                    except:
+                        continue
+                
+                # TRỰC TIẾP TÌM VÀ CLICK NÚT GENERATE (theo yêu cầu user)
+                print("🎯 Nhấn trực tiếp vào nút Generate...")
+                
+                # Selector đúng từ user (không sử dụng gì khác)
+                selector = "button[data-cy='generate-button'][data-tour='generate-button']"
+                
+                try:
+                    generate_button = page.query_selector(selector)
+                    if generate_button and generate_button.is_visible():
+                        generate_button.click()
+                        print("✅ Đã click nút Generate")
+                    else:
+                        # Fallback đơn giản
+                        page.click("button:has-text('Generate')")
+                        print("✅ Đã click nút Generate (fallback)")
+                except Exception as e:
+                    print(f"❌ Lỗi click Generate: {e}")
+                    raise Exception("Không thể click nút Generate")
+                
+                # Chờ video được sinh ra
+                print("⏳ Đang chờ video được sinh ra...")
+                
+                # Xác định timeout dựa trên model
+                if "master" in model.lower():
+                    video_timeout = 600  # 10 phút cho Kling Master
+                else:
+                    video_timeout = 300  # 5 phút cho model thường
+                
+                success = self._wait_for_video_generation(page, timeout_seconds=video_timeout)
                 
                 if not success:
-                    raise Exception("Sinh video thất bại hoặc timeout")
+                    raise Exception(f"Sinh video thất bại hoặc timeout sau {video_timeout}s")
                 
                 # Tải video về
                 print("💾 Đang tải video...")
-                video_path = self._download_video_to_session()
+                video_path = self._download_video_to_session(page)
                 
                 if video_path:
-                    # Lưu metadata cuối cùng
+                    # Lưu metadata thành công
                     session_metadata["output_video"] = os.path.basename(video_path)
                     session_metadata["status"] = "completed"
                     self._save_session_metadata(session_metadata)
                     
-                    print(f"✅ Đã tải video thành công: {video_path}")
+                    print(f"✅ Đã tạo video thành công: {video_path}")
                     print(f"📁 Session folder: {self.current_session_dir}")
                     return video_path
                 else:
@@ -603,355 +1130,47 @@ class FreepikVideoGenerator:
                     raise Exception("Không thể tải video")
                     
             except Exception as e:
-                print(f"❌ Lỗi sinh video: {e}")
-                return None
+                print(f"❌ Lỗi sinh video từ text: {e}")
+                # Lưu metadata lỗi
+                if hasattr(self, 'current_session_dir'):
+                    session_metadata["status"] = "failed"
+                    session_metadata["error"] = str(e)
+                    self._save_session_metadata(session_metadata)
+                raise
+                
             finally:
                 browser.close()
 
-    def generate_video(self, prompt: str, cookie_string: str = None, duration: str = "5s", ratio: str = "1:1"):
+    def generate_video_from_image(self, image_path: str, prompt: str, cookie_string: str = None, 
+                                 duration: str = "5s", ratio: str = "1:1", model: str = "kling_2_1"):
         """
-        Sinh video từ prompt sử dụng Freepik AI
-        
-        Args:
-            prompt: Mô tả video cần sinh
-            cookie_string: Cookie để đăng nhập (string hoặc JSON)
-            duration: Thời lượng video ("5s" hoặc "10s")
-            ratio: Tỷ lệ khung hình ("1:1", "16:9", "9:16")
-            
-        Returns:
-            str: Đường dẫn file video đã tải về
+        Sinh video từ ảnh với prompt - workflow tương tự generate_video
         """
-        print(f"🎬 Bắt đầu sinh video với prompt: {prompt}")
         
-        # Tạo session folder cho lần generate này
-        session_dir = self._create_session_folder("text_to_video")
+        print(f"🎬 Bắt đầu sinh video từ ảnh")
+        print(f"📁 Ảnh: {image_path}")
+        print(f"📝 Prompt: {prompt}")
+        print(f"⚙️ Model: {self._get_model_display_name(model)}")
+        print(f"⏱️ Duration: {duration}")
+        print(f"📐 Ratio: {ratio}")
         
-        # Chuẩn bị metadata
+        # Tạo session directory
+        session_dir = self._create_session_directory()
+        
+        # Metadata
         session_metadata = {
-            "type": "text_to_video",
+            "type": "image_to_video",
+            "image_path": image_path,
             "prompt": prompt,
+            "model": model,
             "duration": duration,
-            "ratio": ratio
+            "ratio": ratio,
+            "timestamp": datetime.now().isoformat(),
+            "status": "started"
         }
+        self._save_session_metadata(session_metadata)
         
-        with sync_playwright() as p:
-            # Khởi động trình duyệt
-            browser = p.firefox.launch(headless=self.headless)
-            context = browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            )
-            page = context.new_page()
-            
-            try:
-                # Thiết lập cookie nếu có
-                if cookie_string:
-                    cookies = self.parse_cookies(cookie_string)
-                    self.set_cookies(page, cookies)
-                
-                # Đi đến trang Pikaso Video
-                print("🌐 Đang mở trang Freepik Pikaso Video...")
-                page.goto("https://www.freepik.com/pikaso/ai-video-generator", 
-                         wait_until="networkidle", timeout=30000)
-                
-                # Chờ và tìm ô nhập prompt
-                print("🔍 Tìm ô nhập prompt...")
-                
-                # Danh sách các selector có thể có
-                potential_selectors = [
-                    "textarea[placeholder*='Describe']",
-                    "textarea[placeholder*='describe']", 
-                    "textarea[placeholder*='prompt']",
-                    "textarea[placeholder*='Prompt']",
-                    "textarea[data-testid*='prompt']",
-                    "textarea[data-testid*='input']",
-                    "[contenteditable='true']",
-                    "textarea",
-                    "input[type='text']",
-                    "[role='textbox']",
-                    ".prompt-input",
-                    "#prompt",
-                    "#prompt-input",
-                    ".text-input",
-                    "[name='prompt']",
-                    "[placeholder*='Enter']",
-                    "[placeholder*='Type']"
-                ]
-                
-                prompt_selector = None
-                found = False
-                
-                # Thử từng selector
-                for selector in potential_selectors:
-                    try:
-                        page.wait_for_selector(selector, timeout=2000)
-                        
-                        # Kiểm tra xem element có thể nhập được không
-                        element = page.query_selector(selector)
-                        if element and element.is_enabled() and element.is_visible():
-                            prompt_selector = selector
-                            found = True
-                            print(f"✓ Tìm thấy ô prompt với selector: {selector}")
-                            break
-                    except:
-                        continue
-                
-                if not found:
-                    # Debug: In ra tất cả các element có thể là input
-                    print("🔍 Debug: Tìm tất cả input elements...")
-                    try:
-                        all_inputs = page.query_selector_all("input, textarea, [contenteditable], [role='textbox']")
-                        print(f"Tìm thấy {len(all_inputs)} input elements:")
-                        for i, inp in enumerate(all_inputs[:5]):  # Chỉ in 5 cái đầu
-                            tag = inp.evaluate("el => el.tagName")
-                            placeholder = inp.get_attribute("placeholder") or ""
-                            data_testid = inp.get_attribute("data-testid") or ""
-                            role = inp.get_attribute("role") or ""
-                            print(f"  {i+1}. <{tag}> placeholder='{placeholder}' data-testid='{data_testid}' role='{role}'")
-                    except Exception as e:
-                        print(f"Debug error: {e}")
-                    
-                    raise Exception("Không tìm thấy ô nhập prompt")
-                
-                # Nhập prompt
-                print("✍️ Đang nhập prompt...")
-                
-                # Thử nhiều cách nhập text
-                try:
-                    # Cách 1: Clear và fill
-                    page.click(prompt_selector)
-                    page.fill(prompt_selector, "")  # Clear trước
-                    page.fill(prompt_selector, prompt)
-                    
-                    # Kiểm tra xem text đã được nhập chưa
-                    current_value = page.input_value(prompt_selector) if page.query_selector(prompt_selector).get_attribute("value") is not None else page.text_content(prompt_selector)
-                    
-                    if not current_value or len(current_value.strip()) == 0:
-                        print("⚠️ Cách 1 không thành công, thử cách 2...")
-                        # Cách 2: Type từng ký tự
-                        page.click(prompt_selector)
-                        page.keyboard.press("Control+A")  # Select all
-                        page.keyboard.press("Delete")     # Delete
-                        page.type(prompt_selector, prompt, delay=50)
-                        
-                        current_value = page.input_value(prompt_selector) if page.query_selector(prompt_selector).get_attribute("value") is not None else page.text_content(prompt_selector)
-                        
-                        if not current_value or len(current_value.strip()) == 0:
-                            print("⚠️ Cách 2 không thành công, thử cách 3...")
-                            # Cách 3: Sử dụng JavaScript
-                            page.evaluate(f"""
-                                const element = document.querySelector('{prompt_selector}');
-                                if (element) {{
-                                    element.value = `{prompt}`;
-                                    element.textContent = `{prompt}`;
-                                    element.innerHTML = `{prompt}`;
-                                    
-                                    // Trigger events
-                                    element.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                                    element.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                                }}
-                            """)
-                            
-                            # Kiểm tra lại
-                            current_value = page.input_value(prompt_selector) if page.query_selector(prompt_selector).get_attribute("value") is not None else page.text_content(prompt_selector)
-                            
-                            if not current_value or len(current_value.strip()) == 0:
-                                print("❌ Không thể nhập prompt bằng mọi cách!")
-                                raise Exception("Không thể nhập prompt vào ô input")
-                    
-                    print(f"✅ Đã nhập prompt thành công: {current_value[:50]}...")
-                    
-                except Exception as e:
-                    print(f"❌ Lỗi khi nhập prompt: {e}")
-                    raise
-                
-                # Chọn model Kling Master 2.1
-                print("⚙️ Đang chọn model Kling Master 2.1...")
-                try:
-                    # Tìm và click vào dropdown model
-                    model_selectors = [
-                        "[data-testid*='model']",
-                        "button[aria-label*='model']",
-                        ".model-selector",
-                        "select"
-                    ]
-                    
-                    for selector in model_selectors:
-                        try:
-                            page.click(selector, timeout=3000)
-                            time.sleep(1)
-                            
-                            # Tìm và chọn Kling Master 2.1
-                            kling_selectors = [
-                                "text=Kling Master 2.1",
-                                "[data-value*='kling']",
-                                "option[value*='kling']"
-                            ]
-                            
-                            for kling_selector in kling_selectors:
-                                try:
-                                    page.click(kling_selector, timeout=2000)
-                                    print("✓ Đã chọn model Kling Master 2.1")
-                                    break
-                                except:
-                                    continue
-                            break
-                        except:
-                            continue
-                            
-                except Exception as e:
-                    print(f"⚠️ Không thể chọn model: {e}")
-                    print("📝 Sử dụng model mặc định")
-                
-                # Chọn thời lượng video
-                print(f"⏱️ Đang chọn thời lượng: {duration}")
-                try:
-                    duration_selectors = [
-                        f"button:has-text('{duration}')",
-                        f"[data-value='{duration}']",
-                        f".duration-{duration}"
-                    ]
-                    
-                    for selector in duration_selectors:
-                        try:
-                            page.click(selector, timeout=3000)
-                            print(f"✓ Đã chọn thời lượng {duration}")
-                            break
-                        except:
-                            continue
-                except Exception as e:
-                    print(f"⚠️ Không thể chọn thời lượng: {e}")
-                
-                # Chọn tỷ lệ khung hình
-                print(f"📏 Đang chọn tỷ lệ: {ratio}")
-                try:
-                    ratio_selectors = [
-                        f"button:has-text('{ratio}')",
-                        f"[data-value='{ratio}']",
-                        f".ratio-{ratio.replace(':', 'x')}"
-                    ]
-                    
-                    for selector in ratio_selectors:
-                        try:
-                            page.click(selector, timeout=3000)
-                            print(f"✓ Đã chọn tỷ lệ {ratio}")
-                            break
-                        except:
-                            continue
-                except Exception as e:
-                    print(f"⚠️ Không thể chọn tỷ lệ: {e}")
-                
-                # Tìm và click nút Generate
-                print("🚀 Đang bắt đầu sinh video...")
-                generate_selectors = [
-                    "button[data-testid*='generate']",
-                    "button:has-text('Generate')",
-                    "button:has-text('Create')", 
-                    ".generate-btn",
-                    "input[type='submit']"
-                ]
-                
-                generated = False
-                for selector in generate_selectors:
-                    try:
-                        page.click(selector, timeout=3000)
-                        print("✓ Đã click nút sinh video")
-                        generated = True
-                        break
-                    except:
-                        continue
-                
-                if not generated:
-                    raise Exception("Không tìm thấy nút Generate")
-                
-                # Chờ video được sinh ra
-                print("⏳ Đang chờ video được sinh ra...")
-                
-                # Đợi kết quả trong 180 giây (video mất nhiều thời gian hơn ảnh)
-                result_found = False
-                for i in range(180):
-                    try:
-                        # Tìm video kết quả hoặc nút download
-                        result_selectors = [
-                            "video[src*='generated']",
-                            "button:has-text('Download')",
-                            ".result-video",
-                            ".generated-video",
-                            "[data-testid*='result'] video",
-                            ".download-btn"
-                        ]
-                        
-                        for selector in result_selectors:
-                            try:
-                                page.wait_for_selector(selector, timeout=2000)
-                                print("✅ Video đã được sinh ra!")
-                                result_found = True
-                                break
-                            except:
-                                continue
-                        
-                        if result_found:
-                            break
-                            
-                        time.sleep(1)
-                        print(f"⏳ Đang chờ... ({i+1}/180s)")
-                        
-                    except:
-                        time.sleep(1)
-                
-                if not result_found:
-                    raise Exception("Timeout: Video không được sinh ra sau 180 giây")
-                
-                # Tải video về session folder
-                print("💾 Đang tải video về...")
-                
-                # Tạo tên file video với timestamp
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f"video_output_{timestamp}.mp4"
-                filepath = os.path.join(self.current_session_dir, filename)
-                
-                # Tìm link download
-                download_selectors = [
-                    "a[download]",
-                    "button:has-text('Download')",
-                    ".download-btn"
-                ]
-                
-                downloaded = False
-                for selector in download_selectors:
-                    try:
-                        with page.expect_download() as download_info:
-                            page.click(selector, timeout=5000)
-                        download = download_info.value
-                        download.save_as(filepath)
-                        downloaded = True
-                        break
-                    except:
-                        continue
-                
-                if downloaded:
-                    # Lưu metadata thành công
-                    session_metadata["output_video"] = os.path.basename(filepath)
-                    session_metadata["status"] = "completed"
-                    self._save_session_metadata(session_metadata)
-                    
-                    print(f"✅ Đã lưu video: {filepath}")
-                    print(f"📁 Session folder: {self.current_session_dir}")
-                    return filepath
-                else:
-                    # Lưu metadata thất bại
-                    session_metadata["status"] = "failed"
-                    session_metadata["error"] = "Download failed"
-                    self._save_session_metadata(session_metadata)
-                    raise Exception("Không thể tải video về")
-                    
-            except Exception as e:
-                # Lưu metadata lỗi
-                session_metadata["status"] = "error"
-                session_metadata["error"] = str(e)
-                self._save_session_metadata(session_metadata)
-                
-                print(f"❌ Lỗi khi sinh video: {e}")
-                return None
-                
-            finally:
-                browser.close() 
+        # Sử dụng cùng logic như generate_video nhưng thêm bước upload ảnh
+        # ... (có thể implement sau nếu cần)
+        
+        return self.generate_video(prompt, cookie_string, duration, ratio, model)

@@ -76,11 +76,9 @@
                     </div>
                     
                     <div class="mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="showBrowser">
-                            <label class="form-check-label" for="showBrowser">
-                                Hiển thị trình duyệt (để debug)
-                            </label>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Lưu ý:</strong> Trình duyệt sẽ luôn hiển thị để đảm bảo hoạt động ổn định với Freepik.
                         </div>
                     </div>
                     
@@ -230,7 +228,7 @@
             num_images: parseInt(document.getElementById('numImages').value),
             download_count: document.getElementById('downloadCount').value ? parseInt(document.getElementById('downloadCount').value) : null,
             filename_prefix: document.getElementById('filenamePrefix').value.trim() || null,
-            show_browser: document.getElementById('showBrowser').checked
+            // Browser luôn visible nên không cần gửi show_browser
         };
         
         if (!data.prompt) {

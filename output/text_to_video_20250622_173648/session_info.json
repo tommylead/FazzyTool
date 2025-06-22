@@ -1,0 +1,12 @@
+{
+  "session_type": "text_to_video",
+  "timestamp": "2025-06-22T17:36:48.343863",
+  "prompt": "A brown bears dance",
+  "duration": "5s",
+  "ratio": "16:9",
+  "model": "kling_2_1",
+  "status": "completed",
+  "session_created": "2025-06-22T17:37:32.862775",
+  "session_folder": "text_to_video_20250622_173648",
+  "output_video": "video_output_20250622_173731.mp4"
+}

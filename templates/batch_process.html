@@ -24,75 +24,102 @@
                 </h5>
             </div>
             <div class="card-body">
-                <div class="alert alert-info">
-                    <h6><i class="fas fa-rocket me-2"></i>Chức năng batch processing đang được phát triển</h6>
-                    <p class="mb-2">Hiện tại bạn có thể sử dụng các chức năng batch thông qua CLI:</p>
-                    <ul class="mb-3">
-                        <li><strong>Batch AI Prompt:</strong> <code>py main.py ai-batch --topics "chủ đề 1" "chủ đề 2"</code></li>
-                        <li><strong>Batch Processing:</strong> <code>py main.py batch</code></li>
-                        <li><strong>Images to Videos:</strong> <code>py main.py images-to-videos</code></li>
-                    </ul>
-                    <p class="mb-0">Giao diện web cho batch processing sẽ có trong phiên bản tiếp theo.</p>
+                <div class="alert alert-success">
+                    <h6><i class="fas fa-rocket me-2"></i>Chức năng batch processing đã sẵn sàng!</h6>
+                    <p class="mb-0">Chọn chức năng batch phù hợp với nhu cầu của bạn:</p>
                 </div>
                 
                 <div class="row">
                     <div class="col-md-4 mb-3">
-                        <div class="card h-100">
+                        <div class="card h-100 border-primary">
                             <div class="card-body text-center">
                                 <i class="fas fa-brain fa-3x text-primary mb-3"></i>
-                                <h6>Batch AI Prompt</h6>
-                                <p class="small text-muted">Tạo nhiều prompt AI từ danh sách chủ đề</p>
-                                <button class="btn btn-outline-primary btn-sm" disabled>
-                                    <i class="fas fa-code me-1"></i>Chỉ CLI
-                                </button>
+                                <h6>Tạo Prompt AI</h6>
+                                <p class="small text-muted">Tạo prompt AI từ chủ đề bằng Gemini</p>
+                                <a href="{{ url_for('generate_prompt_page') }}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-brain me-1"></i>Tạo Prompt
+                                </a>
                             </div>
                         </div>
                     </div>
                     
                     <div class="col-md-4 mb-3">
-                        <div class="card h-100">
+                        <div class="card h-100 border-success">
                             <div class="card-body text-center">
                                 <i class="fas fa-images fa-3x text-success mb-3"></i>
-                                <h6>Batch Images</h6>
-                                <p class="small text-muted">Tạo nhiều ảnh từ file batch config</p>
-                                <button class="btn btn-outline-success btn-sm" disabled>
-                                    <i class="fas fa-code me-1"></i>Chỉ CLI
-                                </button>
+                                <h6>Batch Ảnh từ File</h6>
+                                <p class="small text-muted">Upload file .txt chứa prompts, tạo ảnh hàng loạt</p>
+                                <a href="{{ url_for('batch_prompts_page') }}" class="btn btn-success btn-sm">
+                                    <i class="fas fa-file-image me-1"></i>Batch Ảnh
+                                </a>
                             </div>
                         </div>
                     </div>
                     
                     <div class="col-md-4 mb-3">
-                        <div class="card h-100">
+                        <div class="card h-100 border-warning">
                             <div class="card-body text-center">
                                 <i class="fas fa-video fa-3x text-warning mb-3"></i>
-                                <h6>Images to Videos</h6>
-                                <p class="small text-muted">Chuyển đổi ảnh thành video hàng loạt</p>
-                                <button class="btn btn-outline-warning btn-sm" disabled>
-                                    <i class="fas fa-code me-1"></i>Chỉ CLI
-                                </button>
+                                <h6>Batch Video Hàng Loạt</h6>
+                                <p class="small text-muted">Tạo nhiều video từ danh sách prompts</p>
+                                <a href="{{ url_for('batch_video_page') }}" class="btn btn-warning btn-sm">
+                                    <i class="fas fa-film me-1"></i>Batch Video
+                                </a>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="alert alert-secondary mt-4">
-                    <h6><i class="fas fa-terminal me-2"></i>Sử dụng CLI</h6>
-                    <p>Để sử dụng chức năng batch, mở Command Prompt/Terminal và chạy:</p>
-                    <div class="bg-dark text-light p-3 rounded">
-                        <code>
-                            # Vào thư mục FazzyTool<br>
-                            cd "E:\Tool AI\FazzyTool"<br><br>
-                            
-                            # Tạo batch prompt AI<br>
-                            py main.py ai-batch --topics "con mèo" "con chó" "phong cảnh"<br><br>
-                            
-                            # Chạy batch processing<br>
-                            py main.py batch<br><br>
-                            
-                            # Chuyển ảnh thành video<br>
-                            py main.py images-to-videos
-                        </code>
+                <!-- New Row for Advanced Features -->
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 border-info">
+                            <div class="card-body text-center">
+                                <i class="fas fa-layer-group fa-3x text-info mb-3"></i>
+                                <h6>Tạo Ảnh Đơn Lẻ</h6>
+                                <p class="small text-muted">Tạo 1-4 ảnh từ prompt, tùy chọn số lượng tải về</p>
+                                <a href="{{ url_for('generate_image_page') }}" class="btn btn-info btn-sm">
+                                    <i class="fas fa-image me-1"></i>Tạo Ảnh
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 border-secondary">
+                            <div class="card-body text-center">
+                                <i class="fas fa-play-circle fa-3x text-secondary mb-3"></i>
+                                <h6>Tạo Video Đa Dạng</h6>
+                                <p class="small text-muted">4 chế độ: 1 prompt, nhiều prompt, prompt+ảnh, text batch</p>
+                                <a href="{{ url_for('generate_video_page') }}" class="btn btn-secondary btn-sm">
+                                    <i class="fas fa-video me-1"></i>Tạo Video
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info mt-4">
+                    <h6><i class="fas fa-lightbulb me-2"></i>Hướng dẫn sử dụng Batch Processing</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary">🎨 Batch Ảnh:</h6>
+                            <ol class="small">
+                                <li>Tạo file .txt với format: "Prompt 1: mô tả"</li>
+                                <li>Upload file vào "Batch ảnh từ file"</li>
+                                <li>Mỗi prompt tạo 4 ảnh, tải về 4 ảnh</li>
+                                <li>Kết quả lưu trong thư mục output/</li>
+                            </ol>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-warning">🎬 Batch Video:</h6>
+                            <ol class="small">
+                                <li>Nhập danh sách prompts (mỗi dòng 1 prompt)</li>
+                                <li>Chọn cài đặt video (thời lượng, tỷ lệ, model)</li>
+                                <li>Mỗi prompt tạo 1 video</li>
+                                <li>Có thể tạo tối đa 10 video/lần</li>
+                            </ol>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -100,26 +127,46 @@
     </div>
 </div>
 
-<!-- Quick Actions -->
+<!-- Statistics & Quick Actions -->
 <div class="row mt-4">
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
                 <h6 class="card-title mb-0">
-                    <i class="fas fa-bolt me-2"></i>Thao tác nhanh
+                    <i class="fas fa-chart-bar me-2"></i>Thống kê & Thao tác nhanh
                 </h6>
             </div>
             <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-4 text-center">
+                        <div class="text-primary">
+                            <i class="fas fa-images fa-2x"></i>
+                            <div class="mt-1 fw-bold" id="imageCount">-</div>
+                            <small class="text-muted">Ảnh</small>
+                        </div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div class="text-warning">
+                            <i class="fas fa-video fa-2x"></i>
+                            <div class="mt-1 fw-bold" id="videoCount">-</div>
+                            <small class="text-muted">Video</small>
+                        </div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div class="text-success">
+                            <i class="fas fa-brain fa-2x"></i>
+                            <div class="mt-1 fw-bold" id="promptCount">-</div>
+                            <small class="text-muted">Prompt</small>
+                        </div>
+                    </div>
+                </div>
                 <div class="d-grid gap-2">
-                    <a href="{{ url_for('generate_prompt_page') }}" class="btn btn-primary">
-                        <i class="fas fa-brain me-1"></i>Tạo prompt AI đơn lẻ
+                    <a href="{{ url_for('batch_prompts_page') }}" class="btn btn-success">
+                        <i class="fas fa-file-image me-1"></i>Batch ảnh từ file
                     </a>
-                    <a href="{{ url_for('generate_image_page') }}" class="btn btn-success">
-                        <i class="fas fa-image me-1"></i>Tạo ảnh đơn lẻ
+                    <a href="{{ url_for('batch_video_page') }}" class="btn btn-warning">
+                        <i class="fas fa-film me-1"></i>Batch video hàng loạt
                     </a>
-                    <button class="btn btn-outline-info" onclick="openTerminalHelp()">
-                        <i class="fas fa-question-circle me-1"></i>Hướng dẫn CLI
-                    </button>
                 </div>
             </div>
         </div>
@@ -158,20 +205,40 @@
 
 {% block extra_js %}
 <script>
-    function openTerminalHelp() {
-        alert(`Hướng dẫn sử dụng CLI:
+    document.addEventListener('DOMContentLoaded', function() {
+        loadStatistics();
+    });
 
-1. Mở Command Prompt (Windows) hoặc Terminal (Mac/Linux)
-2. Dùng lệnh 'cd' để di chuyển đến thư mục FazzyTool
-3. Chạy các lệnh với format: py main.py [command] [options]
+    function loadStatistics() {
+        // Load image count
+        fetch('/api/images')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('imageCount').textContent = data.images ? data.images.length : 0;
+            })
+            .catch(error => {
+                document.getElementById('imageCount').textContent = '?';
+            });
 
-Ví dụ:
-- py main.py ai --topic "con mèo dễ thương"
-- py main.py ai-batch --topics "chủ đề 1" "chủ đề 2"
-- py main.py batch
-- py main.py images-to-videos
+        // Load video count
+        fetch('/api/videos')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('videoCount').textContent = data.videos ? data.videos.length : 0;
+            })
+            .catch(error => {
+                document.getElementById('videoCount').textContent = '?';
+            });
 
-Để xem tất cả lệnh: py main.py --help`);
+        // Load prompt count
+        fetch('/api/prompts')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('promptCount').textContent = data.prompts ? data.prompts.length : 0;
+            })
+            .catch(error => {
+                document.getElementById('promptCount').textContent = '?';
+            });
     }
 </script>
 {% endblock %} 

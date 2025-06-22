@@ -1,83 +1,232 @@
-# FAZZYTOOL
+# FAZZYTOOL - Công cụ tự động sinh ảnh và video AI từ Freepik Pikaso
 
-Tool tự động hóa việc sinh ảnh và video trên nền tảng [Freepik Pikaso](https://www.freepik.com/pikaso) thông qua trình duyệt tự động, dựa trên prompt do người dùng nhập hoặc do AI (Gemini API) sinh ra.
+🎨 **Tool tự động hóa việc sinh ảnh và video trên nền tảng Freepik Pikaso** thông qua trình duyệt tự động, dựa trên prompt do người dùng hoặc Gemini AI sinh ra.
 
-## 🚀 Tính năng chính
+## ✨ Tính năng chính
 
-- **🖼️ Tạo ảnh AI**: Sử dụng Freepik AI Image Generator
-- **🎬 Tạo video AI**: Chuyển ảnh thành video hoặc text-to-video
-- **🤖 AI Prompt**: Tự động sinh prompt từ chủ đề tiếng Việt bằng Gemini AI
-- **📦 Xử lý hàng loạt**: Batch processing với file template
-- **🌐 Giao diện Web**: Web interface hiện đại với real-time tracking
-- **⚙️ Cấu hình linh hoạt**: Tùy chỉnh số lượng ảnh, browser, timeout...
+### 🎬 **Video Generation (MỚI!)**
+- **Text-to-Video**: Tạo video từ prompt text
+- **Image-to-Video**: Tạo video từ ảnh có sẵn
+- **Multiple Models**: Hỗ trợ Kling AI 2.1 và Kling Master 2.1
+- **Flexible Settings**: Tùy chỉnh duration (5s/10s) và ratio (1:1/16:9/9:16)
+- **Session Management**: Lưu trữ có tổ chức theo session
 
-## 🔧 Cài đặt nhanh
+### 🎨 **Image Generation**
+- Sinh ảnh từ prompt text
+- Batch processing
+- Tùy chỉnh số lượng ảnh
+- Download selective
 
-### Bước 1: Cài đặt dependencies
+### 🤖 **AI Integration**
+- Tích hợp Gemini AI để sinh prompt tự động
+- Fallback manual prompt khi API limit
+- Batch processing từ topic list
+
+## 🚀 Installation & Setup
+
+### 1. Clone repository
 ```bash
-# Chạy file .bat tự động
-INSTALL_REQUIREMENTS.bat
+git clone <repository-url>
+cd FazzyTool
+```
 
-# Hoặc cài thủ công
+### 2. Install dependencies
+```bash
 pip install -r requirements.txt
-playwright install chromium firefox
 ```
 
-### Bước 2: Khởi chạy
+### 3. Setup Cookie Authentication
+Cập nhật cookie trong file `cookie_template.txt`:
+
+```
+=== HƯỚNG DẪN COOKIE ===
+1. Truy cập https://www.freepik.com/pikaso/ai-image-generator
+2. Đăng nhập tài khoản Freepik
+3. Mở Developer Tools (F12) → Application → Cookies
+4. Copy all cookies và paste vào đây dưới dạng JSON array
+
+=== PASTE COOKIE JSON VÀO ĐÂY ===
+[
+  {
+    "name": "GR_TOKEN",
+    "value": "your_token_here",
+    "domain": ".freepik.com",
+    "path": "/",
+    "secure": true,
+    "httpOnly": false,
+    "sameSite": "Lax"
+  }
+  // ... thêm các cookies khác
+]
+=== KẾT THÚC COOKIE ===
+```
+
+### 4. Setup Gemini API (Optional)
+Tạo file `.env`:
 ```bash
-# Giao diện web (khuyến nghị)
-START_WEB.bat
-
-# Menu CLI
-START.bat
+GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
-## 🌐 Browser Configuration
+## 📖 Usage
 
-**FazzyTool mặc định sử dụng Chrome (Chromium) để đảm bảo tính ổn định và hiệu suất tốt nhất.**
+### 🎬 Video Generation
 
-### Cấu hình browser trong `config_template.txt`:
-```
-=== BROWSER SETTINGS ===
-browser=chrome               # Loại browser: chrome hoặc firefox (KHUYẾN NGHỊ: chrome)
-headless=false               # true = chạy ẩn browser, false = hiển thị UI
-show_browser=false           # Riêng cho Freepik operations
+#### Test nhanh video generation
+```bash
+py main.py test-video
+py main.py test-video --prompt "A dog running in the park"
 ```
 
-### Ưu điểm của Chrome:
-- ✅ Tính ổn định cao hơn
-- ✅ Hỗ trợ tốt hơn cho Freepik AI Generator
-- ✅ Render JavaScript nhanh hơn
-- ✅ Ít lỗi timeout
-
-### Nếu gặp lỗi với Chrome:
-1. Thử set `show_browser=true` trong config
-2. Hoặc đổi sang `browser=firefox`
-3. Chạy lại `INSTALL_REQUIREMENTS.bat`
-
-## �� Cấu trúc project
-
-```
-/fazzytool/
-├── main.py               # CLI chính để chọn chế độ
-├── gemini_prompt.py      # Gửi yêu cầu tới Gemini để lấy JSON prompt
-├── browser_image.py      # Điều khiển trình duyệt tạo ảnh Freepik
-├── browser_video.py      # Điều khiển trình duyệt tạo video Freepik
-├── prompt_loader.py      # Đọc prompt từ .txt / .json / .docx
-├── .env                  # Chứa GEMINI_API_KEY và FREEPIK_COOKIE
-├── requirements.txt      # Danh sách các thư viện cần thiết
-└── output/               # Thư mục lưu ảnh/video kết quả
+#### Tạo video từ prompt trực tiếp
+```bash
+py main.py video --prompt "A cat playing with a ball"
+py main.py video --prompt "Dancing robot" --duration 10s --ratio 16:9
 ```
 
-## Lưu ý
+#### Tạo video từ topic (sử dụng AI)
+```bash
+py main.py video --topic "Mèo dễ thương"
+py main.py video --topic "Chó con chạy trong công viên"
+```
 
-- Tool yêu cầu cookie Freepik Premium để vận hành. Cookie này cần được cập nhật trong file `.env`
-- Để sử dụng chế độ AI, bạn cần API key của Google Gemini, cũng cần cập nhật vào file `.env`
-- Video có thể mất nhiều thời gian hơn để tạo (tối đa 5 phút timeout)
+#### Image-to-Video
+```bash
+py main.py video --prompt "Dancing gracefully" --image path/to/image.jpg
+```
 
-## Cách lấy cookie Freepik
+#### Video với model và settings tùy chỉnh
+```bash
+py main.py video --prompt "Sunset landscape" --model kling_master_2_1 --duration 10s --ratio 16:9
+```
 
-1. Đăng nhập vào tài khoản Freepik Premium của bạn
-2. Mở DevTools (F12) > Tab Application > Storage > Cookies
-3. Tìm domain freepik.com và sao chép toàn bộ cookie
-4. Dán vào biến FREEPIK_COOKIE trong file .env 
+### 🎨 Image Generation
+
+#### Tạo ảnh từ prompt
+```bash
+py main.py image --prompt "Beautiful sunset landscape"
+py main.py image --prompt "Cat portrait" --num-images 6 --download-count 3
+```
+
+#### Tạo ảnh từ topic AI
+```bash
+py main.py image --topic "Mèo dễ thương"
+```
+
+### 🔄 Combined Image + Video
+```bash
+py main.py ai --topic "Chó con dễ thương" --image --video
+py main.py file --file sample_prompts.json --image --video
+```
+
+### 📊 Session Management
+```bash
+py main.py sessions  # Xem thống kê sessions
+```
+
+### 🛠️ Debug & Testing
+```bash
+py main.py debug-cookie  # Test cookie authentication
+py main.py test          # Test toàn bộ hệ thống
+```
+
+## 📁 Project Structure
+
+```
+FazzyTool/
+├── main.py                 # CLI chính
+├── browser_video.py        # Video generation engine (MỚI!)
+├── browser_image.py        # Image generation engine  
+├── gemini_prompt.py        # AI prompt generation
+├── prompt_loader.py        # Prompt file handling
+├── batch_processor.py      # Batch processing
+├── cookie_template.txt     # Cookie configuration
+├── output/                 # Generated files
+│   ├── text_to_video_*/   # Video sessions
+│   └── text_to_image_*/   # Image sessions
+├── prompts/               # AI generated prompts
+└── templates/             # Web interface templates
+```
+
+## 🎯 Quick Examples
+
+### Workflow đơn giản nhất:
+```bash
+# 1. Test cookie
+python main.py debug-cookie
+
+# 2. Test video generation
+python main.py test-video
+
+# 3. Tạo video thật
+python main.py video --prompt "A beautiful landscape"
+```
+
+### Workflow advanced:
+```bash
+# 1. Tạo prompt AI batch
+python main.py ai-batch -t "Mèo dễ thương" -t "Chó con" -t "Cảnh thiên nhiên"
+
+# 2. Batch process tất cả
+python main.py batch
+
+# 3. Xem kết quả
+python main.py sessions
+```
+
+## 🔧 Configuration
+
+### Video Settings
+- **Models**: `kling_2_1`, `kling_master_2_1`
+- **Duration**: `5s`, `10s`  
+- **Ratio**: `1:1`, `16:9`, `9:16`
+
+### Browser Settings
+- `--show-browser`: Hiển thị trình duyệt (debug mode)
+- `--headless`: Chạy ẩn (production mode)
+
+## 🐛 Troubleshooting
+
+### Cookie Issues
+```bash
+python main.py debug-cookie  # Test authentication
+```
+
+### Video Generation Issues
+```bash
+python main.py test-video --show-browser  # Debug với visible browser
+```
+
+### API Issues
+- Check Gemini API key trong `.env`
+- Sử dụng manual prompt khi API limit
+
+## 📈 Recent Updates
+
+### ✅ Video Generation Hoàn Chỉnh (v2.0)
+- **Model Selection**: Kling AI 2.1 Master working 100%
+- **Download Logic**: Button-based download fallback
+- **Wait Logic**: Duration detection + banner filtering  
+- **Session Management**: Organized output structure
+- **Error Handling**: Comprehensive error recovery
+
+### ✅ Authentication Cải Thiện
+- Cookie template parsing
+- Multi-format cookie support
+- Authentication status detection
+
+## 💡 Tips
+
+1. **Chạy test đầu tiên**: `python main.py test-video`
+2. **Sử dụng show-browser** khi debug: `--show-browser`
+3. **Kling Master 2.1** cho chất lượng tốt nhất
+4. **Duration 5s** cho test nhanh, **10s** cho production
+5. **Ratio 1:1** cho social media, **16:9** cho YouTube
+
+## 🔗 Links
+
+- [Freepik Pikaso](https://www.freepik.com/pikaso/ai-video-generator)
+- [Gemini API](https://makersuite.google.com/app/apikey)
+
+---
+
+**🎉 FazzyTool v2.0 - Video Generation Ready! 🎬** 

@@ -622,7 +622,7 @@ class FreepikImageGenerator:
                 if os.path.exists('config_template.txt'):
                     with open('config_template.txt', 'r', encoding='utf-8') as f:
                         content = f.read()
-                    if 'browser=firefox' in content:
+                    if False:  # DISABLED - ALWAYS USE CHROME instead of Firefox
                         browser_type = "firefox"
                     elif 'browser=chrome' in content:
                         browser_type = "chrome"

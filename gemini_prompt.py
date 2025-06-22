@@ -8,26 +8,40 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 
 import google.generativeai as genai
-from dotenv import load_dotenv
 
 
 class GeminiPromptGenerator:
     """Lớp xử lý việc gọi API Gemini để sinh prompt tự động."""
     
     def __init__(self, output_dir: str = "prompts"):
-        """Khởi tạo API key từ biến môi trường."""
-        load_dotenv()
-        self.api_key = os.getenv("GEMINI_API_KEY")
+        """Khởi tạo API key từ config_template.txt."""
+        self.api_key = self._load_api_key_from_config()
         self.output_dir = output_dir
         
         # Tạo thư mục prompts nếu chưa có
         os.makedirs(self.output_dir, exist_ok=True)
         
         if not self.api_key:
-            raise ValueError("GEMINI_API_KEY không tìm thấy trong file .env")
+            raise ValueError("❌ API Key không hợp lệ! 💡 Kiểm tra lại GEMINI_API_KEY trong file config_template.txt")
             
         genai.configure(api_key=self.api_key)
         self.model = genai.GenerativeModel('gemini-1.5-flash')
+    
+    def _load_api_key_from_config(self) -> str:
+        """Load API key từ config_template.txt"""
+        try:
+            if os.path.exists("config_template.txt"):
+                with open("config_template.txt", "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line.startswith("api_key=") and not line.startswith("#"):
+                            api_key = line.split("=", 1)[1].strip()
+                            if api_key and api_key != "<your_key>":
+                                return api_key
+            return ""
+        except Exception as e:
+            print(f"⚠️ Lỗi khi đọc config: {e}")
+            return ""
         
     def generate_prompt(self, topic: str, prompt_id: Optional[str] = None, save_to_file: bool = True) -> Dict[str, Any]:
         """
@@ -128,7 +142,7 @@ class GeminiPromptGenerator:
             elif "api" in error_msg.lower() and "key" in error_msg.lower():
                 raise Exception(
                     f"❌ API Key không hợp lệ!\n"
-                    f"💡 Kiểm tra lại GEMINI_API_KEY trong file .env\n"
+                    f"💡 Kiểm tra lại GEMINI_API_KEY trong file config_template.txt\n"
                     f"Lấy API key mới tại: https://makersuite.google.com/app/apikey\n"
                     f"Chi tiết lỗi: {error_msg}"
                 )

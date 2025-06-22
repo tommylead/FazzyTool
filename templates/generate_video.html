@@ -1,0 +1,957 @@
+{% extends "base.html" %}
+
+{% block title %}Tạo video AI - FazzyTool{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex align-items-center mb-4">
+            <i class="fas fa-video fa-2x text-primary me-3"></i>
+            <div>
+                <h2 class="text-white mb-0">Tạo video AI</h2>
+                <p class="text-white-50 mb-0">Sinh video từ ảnh hoặc prompt với Kling AI</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Form tạo video -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-edit me-2"></i>Tạo video AI
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Mode Selection -->
+                <div class="mb-4">
+                    <label class="form-label">Chế độ tạo video</label>
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="mode" id="imageToVideo" value="image-to-video" checked>
+                        <label class="btn btn-outline-primary" for="imageToVideo">
+                            <i class="fas fa-image me-1"></i>Image-to-Video
+                        </label>
+                        
+                        <input type="radio" class="btn-check" name="mode" id="textToVideo" value="text-to-video">
+                        <label class="btn btn-outline-primary" for="textToVideo">
+                            <i class="fas fa-font me-1"></i>Text-to-Video
+                        </label>
+                    </div>
+                </div>
+
+                <form id="videoForm" enctype="multipart/form-data">
+                    <!-- Image Upload (for Image-to-Video) -->
+                    <div class="mb-3" id="imageUploadSection">
+                        <label for="imageFile" class="form-label">Upload ảnh <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control" id="imageFile" accept="image/*" required>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Chọn ảnh để tạo video từ ảnh đó
+                        </div>
+                    </div>
+                    
+                    <!-- Prompt Mode Selection -->
+                    <div class="mb-3" id="promptModeSection">
+                        <label class="form-label">Chế độ tạo video</label>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <input type="radio" class="btn-check" name="promptMode" id="singlePrompt" value="single" checked>
+                                <label class="btn btn-outline-secondary w-100" for="singlePrompt">
+                                    <i class="fas fa-edit me-1"></i>1 Prompt<br>
+                                    <small class="text-muted">1 ảnh → nhiều video</small>
+                                </label>
+                            </div>
+                            <div class="col-6">
+                                <input type="radio" class="btn-check" name="promptMode" id="batchPromptsOneImage" value="batch-one-image">
+                                <label class="btn btn-outline-warning w-100" for="batchPromptsOneImage">
+                                    <i class="fas fa-list me-1"></i>Nhiều Prompt<br>
+                                    <small class="text-muted">1 ảnh → nhiều video</small>
+                                </label>
+                            </div>
+                            <div class="col-6">
+                                <input type="radio" class="btn-check" name="promptMode" id="batchPromptsMultiImages" value="batch-multi-images">
+                                <label class="btn btn-outline-info w-100" for="batchPromptsMultiImages">
+                                    <i class="fas fa-images me-1"></i>Prompt + Ảnh<br>
+                                    <small class="text-muted">nhiều cặp → nhiều video</small>
+                                </label>
+                            </div>
+                            <div class="col-6">
+                                <input type="radio" class="btn-check" name="promptMode" id="batchTextOnly" value="batch-text-only">
+                                <label class="btn btn-outline-success w-100" for="batchTextOnly">
+                                    <i class="fas fa-video me-1"></i>Text Batch<br>
+                                    <small class="text-muted">nhiều text → nhiều video</small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Single Prompt -->
+                    <div class="mb-3" id="singlePromptSection">
+                        <label for="prompt" class="form-label">Prompt mô tả video (tiếng Anh) <span class="text-danger">*</span></label>
+                        <textarea 
+                            class="form-control" 
+                            id="prompt" 
+                            rows="3" 
+                            placeholder="Mô tả chuyển động, hành động trong video..."
+                            required></textarea>
+                        <div class="form-text">
+                            <i class="fas fa-lightbulb me-1"></i>
+                            <span id="promptHelp">Mô tả chuyển động từ ảnh: "camera zooms in slowly", "leaves falling gently"</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Batch Prompts - One Image Multiple Prompts -->
+                    <div class="mb-3" id="batchPromptsOneImageSection" style="display: none;">
+                        <label for="batchPromptText" class="form-label">Nhiều prompt (mỗi dòng 1 prompt) <span class="text-danger">*</span></label>
+                        <textarea 
+                            class="form-control" 
+                            id="batchPromptText" 
+                            rows="6" 
+                            placeholder="Camera slowly zooms in on the subject&#10;Gentle wind blowing through the scene&#10;Soft lighting creates warm atmosphere&#10;Birds flying in the background"></textarea>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Mỗi dòng 1 prompt. Sẽ tạo nhiều video từ cùng 1 ảnh với các prompt khác nhau.
+                        </div>
+                        
+                        <!-- Batch Preview -->
+                        <div class="mt-2" id="batchPreview" style="display: none;">
+                            <small class="text-muted">Xem trước:</small>
+                            <div id="batchPromptList" class="mt-1"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Batch Prompts - Multiple Images Multiple Prompts -->
+                    <div class="mb-3" id="batchPromptsMultiImagesSection" style="display: none;">
+                        <label for="batchPromptImageText" class="form-label">Prompt + Ảnh (mỗi dòng: prompt|đường_dẫn_ảnh) <span class="text-danger">*</span></label>
+                        <textarea 
+                            class="form-control" 
+                            id="batchPromptImageText" 
+                            rows="8" 
+                            placeholder="Camera slowly zooms in on the cat|cat1.jpg&#10;Dog running in the park|dog1.png&#10;Sunset over mountains|sunset1.jpeg&#10;Ocean waves gently moving|ocean1.jpg"></textarea>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Format: <code>prompt|tên_file_ảnh</code>. Ảnh phải có trong thư mục uploads/.
+                        </div>
+                        
+                        <!-- Multi Images Preview -->
+                        <div class="mt-2" id="batchMultiPreview" style="display: none;">
+                            <small class="text-muted">Xem trước:</small>
+                            <div id="batchMultiList" class="mt-1"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Batch Text Only -->
+                    <div class="mb-3" id="batchTextOnlySection" style="display: none;">
+                        <label for="batchTextOnlyText" class="form-label">Nhiều text prompt (mỗi dòng 1 prompt) <span class="text-danger">*</span></label>
+                        <textarea 
+                            class="form-control" 
+                            id="batchTextOnlyText" 
+                            rows="6" 
+                            placeholder="A cute puppy running in green meadow&#10;Modern city skyline at sunset&#10;Beautiful flowers swaying in breeze&#10;Majestic eagle flying over mountains"></textarea>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Text-to-Video hàng loạt. Mỗi dòng 1 prompt, tạo video hoàn chỉnh không cần ảnh.
+                        </div>
+                        
+                        <!-- Text Only Preview -->
+                        <div class="mt-2" id="batchTextPreview" style="display: none;">
+                            <small class="text-muted">Xem trước:</small>
+                            <div id="batchTextList" class="mt-1"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Video Settings -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="duration" class="form-label">Thời lượng</label>
+                            <select class="form-select" id="duration">
+                                <option value="5s">5 giây</option>
+                                <option value="10s">10 giây</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="ratio" class="form-label">Tỷ lệ khung hình</label>
+                            <select class="form-select" id="ratio">
+                                <option value="16:9">16:9 (Ngang)</option>
+                                <option value="1:1">1:1 (Vuông)</option>
+                                <option value="9:16">9:16 (Dọc)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="model" class="form-label">Model AI</label>
+                            <select class="form-select" id="model">
+                                <option value="kling_master_2_1" selected>Kling Master 2.1</option>
+                                <option value="kling_2_1">Kling 2.1</option>
+                                <option value="kling_2_0">Kling 2.0</option>
+                                <option value="auto">Auto</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Note: Browser luôn hiển thị -->
+                    <div class="mb-3">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Lưu ý:</strong> Trình duyệt sẽ luôn hiển thị để đảm bảo hoạt động ổn định với Freepik.
+                        </div>
+                    </div>
+                    
+                    <!-- Multiple Generation Option (only for single prompt) -->
+                    <div class="mb-3" id="repeatCountSection">
+                        <label for="repeatCount" class="form-label">Số lần tạo video</label>
+                        <select class="form-select" id="repeatCount">
+                            <option value="1" selected>1 video</option>
+                            <option value="2">2 video (lặp lại)</option>
+                            <option value="3">3 video (lặp lại)</option>
+                            <option value="4">4 video (lặp lại)</option>
+                            <option value="5">5 video (lặp lại)</option>
+                        </select>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Tạo nhiều video với cùng input để có thêm lựa chọn
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-secondary me-md-2" id="clearBtn">
+                            <i class="fas fa-eraser me-1"></i>Xóa
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="generateBtn">
+                            <i class="fas fa-play me-1"></i>Tạo video
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Trạng thái -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>Trạng thái
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="statusSection" style="display: none;">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <small class="text-muted">Tiến trình</small>
+                            <small class="text-muted" id="progressText">0%</small>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" id="progressBar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">Video hiện tại:</small>
+                        <div id="currentVideo" class="fw-bold">1 / 1</div>
+                    </div>
+                    
+                    <!-- Current Prompt Info -->
+                    <div class="mb-3" id="currentPromptInfo" style="display: none;">
+                        <small class="text-muted">Prompt hiện tại:</small>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span id="currentPromptIndex" class="fw-bold">1 / 1</span>
+                        </div>
+                        <div class="text-truncate mt-1" style="font-size: 0.875rem;">
+                            <span id="currentPromptText" class="text-muted"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info" id="statusMessage">
+                        <i class="fas fa-spinner fa-spin me-2"></i>Đang khởi tạo...
+                    </div>
+                </div>
+                
+                <div id="resultSection" style="display: none;">
+                    <h6>Kết quả:</h6>
+                    <div id="resultVideos">
+                        <!-- Videos will be displayed here -->
+                    </div>
+                </div>
+                
+                <!-- Hướng dẫn -->
+                <div id="instructionSection">
+                    <h6>Hướng dẫn:</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>4 Chế độ tạo video:</strong>
+                            <ol class="small">
+                                <li><strong>1 Prompt:</strong> 1 ảnh + 1 prompt → nhiều video (lặp lại)</li>
+                                <li><strong>Nhiều Prompt:</strong> 1 ảnh + nhiều prompt → nhiều video</li>
+                                <li><strong>Prompt + Ảnh:</strong> nhiều cặp prompt+ảnh → nhiều video</li>
+                                <li><strong>Text Batch:</strong> nhiều text prompt → nhiều video</li>
+                            </ol>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Cách sử dụng:</strong>
+                            <ol class="small">
+                                <li>Chọn chế độ tạo video</li>
+                                <li>Upload ảnh hoặc chuẩn bị ảnh trong thư mục uploads/</li>
+                                <li>Nhập prompt theo format tương ứng</li>
+                                <li>Chọn cài đặt video</li>
+                                <li>Nhấn "Tạo video"</li>
+                            </ol>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <small>
+                            <i class="fas fa-info-circle me-1"></i>
+                            <strong>Chế độ "Prompt + Ảnh":</strong> Ảnh phải có sẵn trong thư mục <code>uploads/</code>. 
+                            Format: <code>prompt|tên_file.jpg</code>
+                        </small>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <small>
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            Mỗi video mất khoảng 2-5 phút để tạo
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Prompt examples -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>Ví dụ prompt
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="prompt-examples">
+                    <div class="mb-2">
+                        <strong>Image-to-Video:</strong>
+                    </div>
+                    <div class="mb-2">
+                        <button class="btn btn-outline-primary btn-sm w-100 text-start example-btn" 
+                                data-prompt="Camera slowly zooms in on the cat's peaceful face, soft sunlight creates gentle shadows">
+                            Camera zoom vào mặt mèo nhẹ nhàng
+                        </button>
+                    </div>
+                    <div class="mb-2">
+                        <button class="btn btn-outline-primary btn-sm w-100 text-start example-btn" 
+                                data-prompt="Water ripples gently across the lake surface, mountains remain still in background">
+                            Nước hồ gợn sóng nhẹ
+                        </button>
+                    </div>
+                    
+                    <div class="mb-2 mt-3">
+                        <strong>Text-to-Video:</strong>
+                    </div>
+                    <div class="mb-2">
+                        <button class="btn btn-outline-success btn-sm w-100 text-start example-btn" 
+                                data-prompt="A cute puppy running happily in a green meadow, tail wagging, sunny day">
+                            Chó con chạy vui vẻ trên đồng cỏ
+                        </button>
+                    </div>
+                    <div class="mb-2">
+                        <button class="btn btn-outline-success btn-sm w-100 text-start example-btn" 
+                                data-prompt="Modern city skyline at sunset, lights slowly turning on in buildings, traffic flowing">
+                            Thành phố hiện đại lúc hoàng hôn
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentTaskId = null;
+    let statusCheckInterval = null;
+    let currentVideoCount = 0;
+    let totalVideoCount = 1;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('videoForm');
+        const generateBtn = document.getElementById('generateBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const exampleBtns = document.querySelectorAll('.example-btn');
+        const modeRadios = document.querySelectorAll('input[name="mode"]');
+        const promptModeRadios = document.querySelectorAll('input[name="promptMode"]');
+        const imageUploadSection = document.getElementById('imageUploadSection');
+        const promptModeSection = document.getElementById('promptModeSection');
+        const singlePromptSection = document.getElementById('singlePromptSection');
+        const batchPromptsOneImageSection = document.getElementById('batchPromptsOneImageSection');
+        const batchPromptsMultiImagesSection = document.getElementById('batchPromptsMultiImagesSection');
+        const batchTextOnlySection = document.getElementById('batchTextOnlySection');
+        const repeatCountSection = document.getElementById('repeatCountSection');
+        const imageFile = document.getElementById('imageFile');
+        const promptHelp = document.getElementById('promptHelp');
+        const batchPromptText = document.getElementById('batchPromptText');
+        const batchPromptImageText = document.getElementById('batchPromptImageText');
+        const batchTextOnlyText = document.getElementById('batchTextOnlyText');
+        
+        // Handle mode change
+        modeRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                updateModeUI();
+            });
+        });
+        
+        // Handle prompt mode change
+        promptModeRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                updatePromptModeUI();
+            });
+        });
+        
+        // Handle batch prompt text change
+        batchPromptText.addEventListener('input', function() {
+            updateBatchPreview();
+        });
+        
+        // Handle batch prompt + image text change
+        batchPromptImageText.addEventListener('input', function() {
+            updateBatchMultiPreview();
+        });
+        
+        // Handle batch text only change
+        batchTextOnlyText.addEventListener('input', function() {
+            updateBatchTextPreview();
+        });
+        
+        function updateModeUI() {
+            const mode = document.querySelector('input[name="mode"]:checked').value;
+            
+            if (mode === 'image-to-video') {
+                imageUploadSection.style.display = 'block';
+                promptModeSection.style.display = 'block';
+                imageFile.required = true;
+                promptHelp.textContent = 'Mô tả chuyển động từ ảnh: "camera zooms in slowly", "leaves falling gently"';
+            } else {
+                imageUploadSection.style.display = 'none';
+                promptModeSection.style.display = 'block'; // Show mode selection for text-to-video too
+                imageFile.required = false;
+                promptHelp.textContent = 'Mô tả video hoàn chỉnh: "A cat playing in garden", "Sunset over mountains"';
+                
+                // Reset to single prompt for text-to-video
+                document.getElementById('singlePrompt').checked = true;
+                updatePromptModeUI();
+            }
+        }
+        
+        function updatePromptModeUI() {
+            const mode = document.querySelector('input[name="mode"]:checked').value;
+            const promptMode = document.querySelector('input[name="promptMode"]:checked').value;
+            
+            // Hide all sections first
+            singlePromptSection.style.display = 'none';
+            batchPromptsOneImageSection.style.display = 'none';
+            batchPromptsMultiImagesSection.style.display = 'none';
+            batchTextOnlySection.style.display = 'none';
+            repeatCountSection.style.display = 'none';
+            
+            // Reset required fields
+            document.getElementById('prompt').required = false;
+            batchPromptText.required = false;
+            batchPromptImageText.required = false;
+            batchTextOnlyText.required = false;
+            
+            if (promptMode === 'single') {
+                // Case 1: 1 prompt + 1 ảnh → nhiều video (lặp lại)
+                singlePromptSection.style.display = 'block';
+                repeatCountSection.style.display = 'block';
+                document.getElementById('prompt').required = true;
+                
+            } else if (promptMode === 'batch-one-image') {
+                // Case 2: nhiều prompt + 1 ảnh → nhiều video
+                if (mode === 'image-to-video') {
+                    batchPromptsOneImageSection.style.display = 'block';
+                    batchPromptText.required = true;
+                    updateBatchPreview();
+                } else {
+                    // Fallback to single for text-to-video
+                    document.getElementById('singlePrompt').checked = true;
+                    updatePromptModeUI();
+                    return;
+                }
+                
+            } else if (promptMode === 'batch-multi-images') {
+                // Case 3: nhiều prompt + nhiều ảnh → nhiều video
+                batchPromptsMultiImagesSection.style.display = 'block';
+                batchPromptImageText.required = true;
+                updateBatchMultiPreview();
+                
+            } else if (promptMode === 'batch-text-only') {
+                // Case 4: nhiều text → nhiều video
+                batchTextOnlySection.style.display = 'block';
+                batchTextOnlyText.required = true;
+                updateBatchTextPreview();
+            }
+        }
+        
+        function updateBatchPreview() {
+            const text = batchPromptText.value.trim();
+            const preview = document.getElementById('batchPreview');
+            const list = document.getElementById('batchPromptList');
+            
+            if (!text) {
+                preview.style.display = 'none';
+                return;
+            }
+            
+            const prompts = text.split('\n').filter(line => line.trim());
+            
+            if (prompts.length === 0) {
+                preview.style.display = 'none';
+                return;
+            }
+            
+            list.innerHTML = '';
+            prompts.forEach((prompt, index) => {
+                const div = document.createElement('div');
+                div.className = 'badge bg-secondary me-1 mb-1';
+                div.textContent = `${index + 1}. ${prompt.substring(0, 30)}${prompt.length > 30 ? '...' : ''}`;
+                list.appendChild(div);
+            });
+            
+            preview.style.display = 'block';
+        }
+        
+        function updateBatchMultiPreview() {
+            const text = batchPromptImageText.value.trim();
+            const preview = document.getElementById('batchMultiPreview');
+            const list = document.getElementById('batchMultiList');
+            
+            if (!text) {
+                preview.style.display = 'none';
+                return;
+            }
+            
+            const lines = text.split('\n').filter(line => line.trim());
+            
+            if (lines.length === 0) {
+                preview.style.display = 'none';
+                return;
+            }
+            
+            list.innerHTML = '';
+            lines.forEach((line, index) => {
+                const parts = line.split('|');
+                if (parts.length >= 2) {
+                    const prompt = parts[0].trim();
+                    const image = parts[1].trim();
+                    
+                    const div = document.createElement('div');
+                    div.className = 'badge bg-info me-1 mb-1';
+                    div.textContent = `${index + 1}. ${prompt.substring(0, 20)}... + ${image}`;
+                    list.appendChild(div);
+                } else {
+                    const div = document.createElement('div');
+                    div.className = 'badge bg-danger me-1 mb-1';
+                    div.textContent = `${index + 1}. ❌ Format sai`;
+                    list.appendChild(div);
+                }
+            });
+            
+            preview.style.display = 'block';
+        }
+        
+        function updateBatchTextPreview() {
+            const text = batchTextOnlyText.value.trim();
+            const preview = document.getElementById('batchTextPreview');
+            const list = document.getElementById('batchTextList');
+            
+            if (!text) {
+                preview.style.display = 'none';
+                return;
+            }
+            
+            const prompts = text.split('\n').filter(line => line.trim());
+            
+            if (prompts.length === 0) {
+                preview.style.display = 'none';
+                return;
+            }
+            
+            list.innerHTML = '';
+            prompts.forEach((prompt, index) => {
+                const div = document.createElement('div');
+                div.className = 'badge bg-success me-1 mb-1';
+                div.textContent = `${index + 1}. ${prompt.substring(0, 30)}${prompt.length > 30 ? '...' : ''}`;
+                list.appendChild(div);
+            });
+            
+            preview.style.display = 'block';
+        }
+        
+        // Handle form submission
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            generateVideo();
+        });
+        
+        // Handle clear button
+        clearBtn.addEventListener('click', function() {
+            form.reset();
+            document.getElementById('imageToVideo').checked = true;
+            updateModeUI();
+            hideStatus();
+        });
+        
+        // Handle example prompts
+        exampleBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.getElementById('prompt').value = this.dataset.prompt;
+                
+                // Auto-select mode based on example
+                if (this.classList.contains('btn-outline-success')) {
+                    document.getElementById('textToVideo').checked = true;
+                } else {
+                    document.getElementById('imageToVideo').checked = true;
+                }
+                updateModeUI();
+            });
+        });
+        
+        // Initialize UI
+        updateModeUI();
+    });
+    
+    function generateVideo() {
+        const mode = document.querySelector('input[name="mode"]:checked').value;
+        const promptMode = document.querySelector('input[name="promptMode"]:checked').value;
+        const duration = document.getElementById('duration').value;
+        const ratio = document.getElementById('ratio').value;
+        const model = document.getElementById('model').value;
+        // Browser luôn visible nên không cần check showBrowser
+        
+        let prompts = [];
+        let repeatCount = 1;
+        
+        // Get prompts and images based on mode
+        let images = [];
+        
+        if (promptMode === 'single') {
+            // Case 1: 1 prompt + 1 ảnh → nhiều video (lặp lại)
+            const prompt = document.getElementById('prompt').value.trim();
+            if (!prompt) {
+                alert('Vui lòng nhập prompt!');
+                return;
+            }
+            prompts = [prompt];
+            repeatCount = parseInt(document.getElementById('repeatCount').value);
+            
+        } else if (promptMode === 'batch-one-image') {
+            // Case 2: nhiều prompt + 1 ảnh → nhiều video
+            const batchText = document.getElementById('batchPromptText').value.trim();
+            if (!batchText) {
+                alert('Vui lòng nhập các prompt!');
+                return;
+            }
+            
+            prompts = batchText.split('\n').filter(line => line.trim()).map(line => line.trim());
+            if (prompts.length === 0) {
+                alert('Không tìm thấy prompt nào hợp lệ!');
+                return;
+            }
+            
+            if (prompts.length > 10) {
+                alert('Tối đa 10 prompt mỗi lần!');
+                return;
+            }
+            
+            repeatCount = 1; // Each prompt generates 1 video
+            
+        } else if (promptMode === 'batch-multi-images') {
+            // Case 3: nhiều prompt + nhiều ảnh → nhiều video
+            const batchText = document.getElementById('batchPromptImageText').value.trim();
+            if (!batchText) {
+                alert('Vui lòng nhập các cặp prompt + ảnh!');
+                return;
+            }
+            
+            const lines = batchText.split('\n').filter(line => line.trim());
+            if (lines.length === 0) {
+                alert('Không tìm thấy dữ liệu nào hợp lệ!');
+                return;
+            }
+            
+            prompts = [];
+            images = [];
+            
+            for (let line of lines) {
+                const parts = line.split('|');
+                if (parts.length < 2) {
+                    alert(`Format sai ở dòng: "${line}"\nVui lòng sử dụng: prompt|tên_file_ảnh`);
+                    return;
+                }
+                prompts.push(parts[0].trim());
+                images.push(parts[1].trim());
+            }
+            
+            if (prompts.length > 10) {
+                alert('Tối đa 10 cặp prompt+ảnh mỗi lần!');
+                return;
+            }
+            
+            repeatCount = 1;
+            
+        } else if (promptMode === 'batch-text-only') {
+            // Case 4: nhiều text → nhiều video
+            const batchText = document.getElementById('batchTextOnlyText').value.trim();
+            if (!batchText) {
+                alert('Vui lòng nhập các text prompt!');
+                return;
+            }
+            
+            prompts = batchText.split('\n').filter(line => line.trim()).map(line => line.trim());
+            if (prompts.length === 0) {
+                alert('Không tìm thấy prompt nào hợp lệ!');
+                return;
+            }
+            
+            if (prompts.length > 10) {
+                alert('Tối đa 10 prompt mỗi lần!');
+                return;
+            }
+            
+            repeatCount = 1;
+        }
+        
+        // Validate images based on mode
+        if (mode === 'image-to-video' && (promptMode === 'single' || promptMode === 'batch-one-image')) {
+            const imageFile = document.getElementById('imageFile').files[0];
+            if (!imageFile) {
+                alert('Vui lòng chọn ảnh!');
+                return;
+            }
+        } else if (promptMode === 'batch-multi-images') {
+            // For multi-images, we'll validate image files exist on server side
+            if (images.length === 0) {
+                alert('Không có ảnh nào được chỉ định!');
+                return;
+            }
+        }
+        
+        // Show loading state
+        showStatus();
+        totalVideoCount = prompts.length * repeatCount;
+        currentVideoCount = 0;
+        updateVideoProgress();
+        
+        generateBtn.disabled = true;
+        generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang tạo...';
+        
+        // Start video generation
+        const formData = new FormData();
+        formData.append('mode', mode);
+        formData.append('prompt_mode', promptMode);
+        formData.append('prompts', JSON.stringify(prompts));
+        formData.append('duration', duration);
+        formData.append('ratio', ratio);
+        formData.append('model', model);
+        // Browser luôn visible nên không cần gửi show_browser
+        formData.append('repeat_count', repeatCount);
+        
+        // Handle images based on mode
+        if (mode === 'image-to-video' && (promptMode === 'single' || promptMode === 'batch-one-image')) {
+            formData.append('image', document.getElementById('imageFile').files[0]);
+        } else if (promptMode === 'batch-multi-images') {
+            formData.append('images', JSON.stringify(images));
+        }
+        
+        fetch('/api/generate-video', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            
+            currentTaskId = result.task_id;
+            checkTaskStatus();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showError(error.message);
+            resetForm();
+        });
+    }
+    
+    function checkTaskStatus() {
+        if (!currentTaskId) return;
+        
+        statusCheckInterval = setInterval(() => {
+            fetch(`/api/task-status/${currentTaskId}`)
+                .then(response => response.json())
+                .then(status => {
+                    updateProgress(status.progress || 0, status.message || 'Đang xử lý...');
+                    
+                    // Update video count if available
+                    if (status.current_video !== undefined && status.total_videos !== undefined) {
+                        currentVideoCount = status.current_video;
+                        totalVideoCount = status.total_videos;
+                        updateVideoProgress();
+                    }
+                    
+                    // Update prompt info if available
+                    if (status.current_prompt_index !== undefined && status.total_prompts !== undefined) {
+                        updatePromptProgress(status.current_prompt_index, status.total_prompts, status.current_prompt || '');
+                    }
+                    
+                    if (status.status === 'completed') {
+                        clearInterval(statusCheckInterval);
+                        showResults(status.results || []);
+                        resetForm();
+                    } else if (status.status === 'error') {
+                        clearInterval(statusCheckInterval);
+                        showError(status.message || 'Có lỗi xảy ra');
+                        resetForm();
+                    }
+                })
+                .catch(error => {
+                    console.error('Status check error:', error);
+                });
+        }, 3000); // Check every 3 seconds for video (slower than image)
+    }
+    
+    function updateVideoProgress() {
+        document.getElementById('currentVideo').textContent = `${currentVideoCount} / ${totalVideoCount}`;
+    }
+    
+    function updatePromptProgress(currentIndex, totalPrompts, promptText) {
+        const promptInfo = document.getElementById('currentPromptInfo');
+        const promptIndex = document.getElementById('currentPromptIndex');
+        const promptTextElement = document.getElementById('currentPromptText');
+        
+        if (totalPrompts > 1) {
+            promptInfo.style.display = 'block';
+            promptIndex.textContent = `${currentIndex} / ${totalPrompts}`;
+            promptTextElement.textContent = promptText;
+        } else {
+            promptInfo.style.display = 'none';
+        }
+    }
+    
+    function showStatus() {
+        document.getElementById('instructionSection').style.display = 'none';
+        document.getElementById('statusSection').style.display = 'block';
+        document.getElementById('resultSection').style.display = 'none';
+    }
+    
+    function hideStatus() {
+        document.getElementById('instructionSection').style.display = 'block';
+        document.getElementById('statusSection').style.display = 'none';
+        document.getElementById('resultSection').style.display = 'none';
+    }
+    
+    function updateProgress(progress, message) {
+        document.getElementById('progressBar').style.width = progress + '%';
+        document.getElementById('progressText').textContent = progress + '%';
+        document.getElementById('statusMessage').innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i>${message}`;
+    }
+    
+    function showResults(results) {
+        const container = document.getElementById('resultVideos');
+        container.innerHTML = '';
+        
+        if (results && results.length > 0) {
+            results.forEach((filename, index) => {
+                const div = document.createElement('div');
+                div.className = 'mb-3';
+                
+                const isVideo = filename.endsWith('.mp4');
+                const isImage = filename.endsWith('.png') || filename.endsWith('.jpg') || filename.endsWith('.jpeg');
+                const isPartial = filename.startsWith('partial_');
+                
+                let mediaContent = '';
+                let title = '';
+                
+                if (isVideo) {
+                    title = `Video ${index + 1}`;
+                    mediaContent = `
+                        <video controls class="w-100" style="max-height: 200px;">
+                            <source src="/output/${filename}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    `;
+                } else if (isImage) {
+                    title = isPartial ? `Screenshot ${index + 1} (Video lỗi)` : `Ảnh ${index + 1}`;
+                    mediaContent = `
+                        <img src="/output/${filename}" class="w-100" style="max-height: 200px; object-fit: contain;" alt="Result ${index + 1}">
+                    `;
+                } else {
+                    title = `File ${index + 1}`;
+                    mediaContent = `
+                        <div class="text-center p-3 bg-light">
+                            <i class="fas fa-file fa-3x text-muted"></i>
+                            <p class="mt-2 mb-0 small">${filename}</p>
+                        </div>
+                    `;
+                }
+                
+                div.innerHTML = `
+                    <div class="card">
+                        <div class="card-body p-2">
+                            <h6 class="card-title small mb-2">
+                                ${title}
+                                ${isPartial ? '<span class="badge bg-warning ms-1">Partial</span>' : ''}
+                            </h6>
+                            ${mediaContent}
+                            <div class="mt-2 d-flex gap-1">
+                                <a href="/output/${filename}" class="btn btn-sm btn-outline-primary flex-fill" download>
+                                    <i class="fas fa-download me-1"></i>Tải về
+                                </a>
+                                <a href="/output/${filename}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-external-link-alt"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+            
+            document.getElementById('resultSection').style.display = 'block';
+            
+            // Đếm video và screenshot
+            const videoCount = results.filter(f => f.endsWith('.mp4')).length;
+            const imageCount = results.filter(f => f.endsWith('.png') || f.endsWith('.jpg') || f.endsWith('.jpeg')).length;
+            
+            let message = '';
+            if (videoCount > 0 && imageCount > 0) {
+                message = `Hoàn thành! ${videoCount} video + ${imageCount} screenshot`;
+            } else if (videoCount > 0) {
+                message = `Hoàn thành! Đã tạo ${videoCount} video`;
+            } else if (imageCount > 0) {
+                message = `Hoàn thành! Đã tạo ${imageCount} screenshot (video download lỗi)`;
+            } else {
+                message = `Hoàn thành! Đã tạo ${results.length} file`;
+            }
+            
+            document.getElementById('statusMessage').innerHTML = `<i class="fas fa-check-circle text-success me-2"></i>${message}`;
+        } else {
+            document.getElementById('statusMessage').innerHTML = `<i class="fas fa-exclamation-triangle text-warning me-2"></i>Không có kết quả nào được tạo`;
+        }
+    }
+    
+    function showError(message) {
+        document.getElementById('statusMessage').innerHTML = `<i class="fas fa-exclamation-circle text-danger me-2"></i>Lỗi: ${message}`;
+        document.getElementById('statusMessage').className = 'alert alert-danger';
+    }
+    
+    function resetForm() {
+        generateBtn.disabled = false;
+        generateBtn.innerHTML = '<i class="fas fa-play me-1"></i>Tạo video';
+        currentTaskId = null;
+        if (statusCheckInterval) {
+            clearInterval(statusCheckInterval);
+            statusCheckInterval = null;
+        }
+    }
+</script>
+{% endblock %}
