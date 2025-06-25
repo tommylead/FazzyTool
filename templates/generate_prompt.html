@@ -370,23 +370,7 @@
                     </div>
                 </div>
                 
-                <div class="mb-3">
-                    <label class="form-label">Prompt video (tiếng Anh):</label>
-                    <div class="position-relative">
-                        <textarea 
-                            id="resultVideoPrompt" 
-                            class="form-control" 
-                            rows="4" 
-                            readonly></textarea>
-                        <button 
-                            type="button" 
-                            class="btn btn-outline-primary btn-sm position-absolute top-0 end-0 m-2" 
-                            id="copyVideoBtn"
-                            title="Sao chép prompt video">
-                            <i class="fas fa-copy"></i>
-                        </button>
-                    </div>
-                </div>
+
                 
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-primary" id="usePromptBtn">
@@ -530,19 +514,7 @@
             }, 2000);
         });
         
-        // Handle copy button for video prompt
-        const copyVideoBtn = document.getElementById('copyVideoBtn');
-        copyVideoBtn.addEventListener('click', function() {
-            const promptText = document.getElementById('resultVideoPrompt');
-            promptText.select();
-            document.execCommand('copy');
-            
-            // Show feedback
-            this.innerHTML = '<i class="fas fa-check"></i>';
-            setTimeout(() => {
-                this.innerHTML = '<i class="fas fa-copy"></i>';
-            }, 2000);
-        });
+
         
         // Handle use prompt button
         usePromptBtn.addEventListener('click', function() {
@@ -638,9 +610,7 @@
         
         document.getElementById('resultTopic').textContent = promptData.topic || '';
         document.getElementById('resultPrompt').value = promptData.image_prompt || '';
-        document.getElementById('resultVideoPrompt').value = promptData.video_prompt || '';
-        document.getElementById('resultVideoDuration').value = promptData.video_duration || '';
-        document.getElementById('resultVideoRatio').value = promptData.video_ratio || '';
+
         document.getElementById('resultCard').style.display = 'block';
         
         // Update status message
@@ -776,9 +746,7 @@
         
         document.getElementById('resultTopic').textContent = prompt.topic || '';
         document.getElementById('resultPrompt').value = prompt.content || prompt.image_prompt || '';
-        document.getElementById('resultVideoPrompt').value = prompt.video_prompt || '';
-        document.getElementById('resultVideoDuration').value = prompt.video_duration || '';
-        document.getElementById('resultVideoRatio').value = prompt.video_ratio || '';
+
         document.getElementById('resultCard').style.display = 'block';
         currentPromptData = prompt;
     }
@@ -818,7 +786,6 @@
         // Create edit form
         const originalContent = promptDiv.innerHTML;
         const imagePrompt = prompt.content || prompt.image_prompt || '';
-        const videoPrompt = prompt.video_prompt || '';
         
         promptDiv.innerHTML = `
             <div class="edit-form">
@@ -829,27 +796,6 @@
                 <div class="mb-2">
                     <label class="form-label small"><strong>Prompt ảnh:</strong></label>
                     <textarea class="form-control form-control-sm" rows="3" id="editImagePrompt_${index}">${imagePrompt}</textarea>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label small"><strong>Prompt video:</strong></label>
-                    <textarea class="form-control form-control-sm" rows="3" id="editVideoPrompt_${index}">${videoPrompt}</textarea>
-                </div>
-                <div class="row mb-2">
-                    <div class="col-6">
-                        <label class="form-label small"><strong>Thời lượng:</strong></label>
-                        <select class="form-control form-control-sm" id="editDuration_${index}">
-                            <option value="5s" ${prompt.video_duration === '5s' ? 'selected' : ''}>5s</option>
-                            <option value="10s" ${prompt.video_duration === '10s' ? 'selected' : ''}>10s</option>
-                        </select>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label small"><strong>Tỷ lệ:</strong></label>
-                        <select class="form-control form-control-sm" id="editRatio_${index}">
-                            <option value="16:9" ${prompt.video_ratio === '16:9' ? 'selected' : ''}>16:9</option>
-                            <option value="1:1" ${prompt.video_ratio === '1:1' ? 'selected' : ''}>1:1</option>
-                            <option value="9:16" ${prompt.video_ratio === '9:16' ? 'selected' : ''}>9:16</option>
-                        </select>
-                    </div>
                 </div>
                 <div class="edit-actions">
                     <button class="btn btn-success" onclick="savePromptEdit(${index})">
@@ -882,16 +828,10 @@
     function useEditedPrompt(index) {
         const newTopic = document.getElementById(`editTopic_${index}`).value;
         const newImagePrompt = document.getElementById(`editImagePrompt_${index}`).value;
-        const newVideoPrompt = document.getElementById(`editVideoPrompt_${index}`).value;
-        const newDuration = document.getElementById(`editDuration_${index}`).value;
-        const newRatio = document.getElementById(`editRatio_${index}`).value;
         
         // Load to result editor
         document.getElementById('resultTopic').textContent = newTopic;
         document.getElementById('resultPrompt').value = newImagePrompt;
-        document.getElementById('resultVideoPrompt').value = newVideoPrompt;
-        document.getElementById('resultVideoDuration').value = newDuration;
-        document.getElementById('resultVideoRatio').value = newRatio;
         document.getElementById('resultCard').style.display = 'block';
         
         // Cancel edit mode
@@ -904,19 +844,13 @@
         
         const newTopic = document.getElementById(`editTopic_${index}`).value;
         const newImagePrompt = document.getElementById(`editImagePrompt_${index}`).value;
-        const newVideoPrompt = document.getElementById(`editVideoPrompt_${index}`).value;
-        const newDuration = document.getElementById(`editDuration_${index}`).value;
-        const newRatio = document.getElementById(`editRatio_${index}`).value;
         
         // Update the prompt data
         const updatedPrompt = {
             ...prompt,
             topic: newTopic,
             image_prompt: newImagePrompt,
-            content: newImagePrompt, // Keep both for compatibility
-            video_prompt: newVideoPrompt,
-            video_duration: newDuration,
-            video_ratio: newRatio
+            content: newImagePrompt // Keep both for compatibility
         };
         
         // Save to file via API (you could implement this)

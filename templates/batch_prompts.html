@@ -36,9 +36,13 @@
                     </div>
                     
                     <div class="mb-3">
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <strong>Lưu ý:</strong> Trình duyệt sẽ luôn hiển thị để đảm bảo hoạt động ổn định với Freepik.
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>⚠️ LƯU Ý QUAN TRỌNG:</strong><br>
+                            • Chỉ click "Bắt đầu tạo ảnh" <strong>MỘT LẦN</strong><br>
+                            • Chrome sẽ tự động mở để xử lý ảnh<br>
+                            • <strong>KHÔNG click nhiều lần</strong> để tránh mở nhiều browser<br>
+                            • Chờ hoàn thành trước khi thực hiện thao tác mới
                         </div>
                     </div>
                     
@@ -141,10 +145,6 @@
                     <div class="alert alert-info" id="statusMessage">
                         <i class="fas fa-spinner fa-spin me-2"></i>Đang khởi tạo...
                     </div>
-                    
-                    <button type="button" class="btn btn-outline-danger btn-sm w-100" id="stopBtn" style="display: none;">
-                        <i class="fas fa-stop me-1"></i>Dừng xử lý
-                    </button>
                 </div>
                 
                 <!-- Hướng dẫn -->
@@ -242,6 +242,8 @@
     let isProcessing = false;
     let parsedPrompts = [];
     let fileContent = '';
+    let lastClickTime = 0;
+    const DEBOUNCE_TIME = 2000; // 2 giây debounce
 
     // Upload file và preview
     document.getElementById('uploadForm').addEventListener('submit', async function(e) {
@@ -266,16 +268,19 @@
             
             const data = await response.json();
             
-            if (response.ok) {
-                fileContent = data.file_content;
-                parsedPrompts = data.parsed_prompts;
+            if (response.ok && data.success) {
+                fileContent = data.file_content || '';
+                parsedPrompts = data.parsed_prompts || [];
                 
+                if (parsedPrompts.length > 0) {
                 showPreview(data);
                 updateStats(data);
-                
                 document.getElementById('generateBtn').disabled = false;
+                } else {
+                    throw new Error('Không tìm thấy prompt nào trong file');
+                }
             } else {
-                throw new Error(data.error || 'Lỗi upload file');
+                throw new Error(data.message || data.error || 'Lỗi upload file');
             }
             
         } catch (error) {
@@ -289,21 +294,26 @@
         
         previewCard.style.display = 'block';
         
+        const totalPrompts = data.total_prompts || 0;
+        const parsedPrompts = data.parsed_prompts || [];
+        
         let html = `<div class="alert alert-success">
             <h6><i class="fas fa-check-circle me-2"></i>Phân tích thành công!</h6>
-            <p class="mb-0">Tìm thấy <strong>${data.total_prompts}</strong> prompt hợp lệ</p>
+            <p class="mb-0">Tìm thấy <strong>${totalPrompts}</strong> prompt hợp lệ</p>
         </div>`;
         
-        if (data.parsed_prompts.length > 0) {
+        if (parsedPrompts.length > 0) {
             html += '<div class="list-group">';
-            data.parsed_prompts.forEach((prompt, index) => {
+            parsedPrompts.forEach((prompt, index) => {
+                const promptName = prompt.name || `Prompt ${index + 1}`;
+                const promptContent = prompt.content || 'Không có nội dung';
                 html += `
                     <div class="list-group-item">
                         <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1">${prompt.name}</h6>
+                            <h6 class="mb-1">${promptName}</h6>
                             <small class="text-muted">4 ảnh</small>
                         </div>
-                        <p class="mb-1">${prompt.content}</p>
+                        <p class="mb-1">${promptContent}</p>
                     </div>
                 `;
             });
@@ -317,7 +327,7 @@
         document.getElementById('noStatsSection').style.display = 'none';
         document.getElementById('statsSection').style.display = 'block';
         
-        const totalPrompts = data.total_prompts;
+        const totalPrompts = data.total_prompts || 0;
         const totalImages = totalPrompts * 4; // 4 ảnh mỗi prompt
         const estimatedMinutes = Math.ceil(totalPrompts * 3); // 3 phút per prompt
         
@@ -327,52 +337,86 @@
     }
 
     // Bắt đầu tạo ảnh
-    document.getElementById('generateBtn').addEventListener('click', async function() {
-        if (isProcessing) {
-            alert('Đang xử lý batch khác, vui lòng chờ hoàn thành');
+    document.getElementById('generateBtn').addEventListener('click', function() {
+        generateBatchImages();
+    });
+
+    function generateBatchImages() {
+        const generateBtn = document.getElementById('generateBtn');
+        const now = Date.now();
+        
+        // Debounce check - ngăn click quá nhanh
+        if (now - lastClickTime < DEBOUNCE_TIME) {
+            console.log('⚠️ Click quá nhanh, bỏ qua');
+            alert('⚠️ CLICK QUÁ NHANH!\n\nVui lòng chờ ít nhất 2 giây giữa các lần click.');
+            return;
+        }
+        lastClickTime = now;
+        
+        // NGAY LẬP TỨC disable button để ngăn double-click
+        generateBtn.disabled = true;
+        generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang khởi tạo...';
+        
+        // Ngăn multiple clicks
+        if (currentTaskId) {
+            alert('⚠️ ĐÃ CÓ TASK ĐANG CHẠY!\n\n' +
+                  '• Chỉ được tạo ảnh 1 lần trong 1 thời điểm\n' +
+                  '• Chrome đang xử lý task hiện tại\n' +
+                  '• Vui lòng chờ hoàn thành trước khi thực hiện mới\n\n' +
+                  'Task ID: ' + currentTaskId);
+            resetForm(); // Reset button nếu có lỗi
             return;
         }
         
         if (!fileContent) {
             alert('Vui lòng upload file trước');
+            resetForm();
             return;
         }
         
-        try {
-            isProcessing = true;
+        // Show loading state
             showProcessingUI();
+        generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang tạo...';
             
-            // Browser luôn visible
-            
-            const response = await fetch('/api/batch-prompts', {
+        // Start batch process
+        fetch('/api/batch-prompts', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
                     file_content: fileContent
-                    // Browser luôn visible
                 })
-            });
+        })
+        .then(response => response.json())
+        .then(result => {
+            console.log('📡 API Response:', result);
             
-            const data = await response.json();
-            
-            if (response.ok) {
-                currentTaskId = data.task_id;
-                startStatusChecking();
-                
-                document.getElementById('statusMessage').innerHTML = 
-                    '<i class="fas fa-spinner fa-spin me-2"></i>Đã bắt đầu xử lý ' + data.total_prompts + ' prompt...';
-            } else {
-                throw new Error(data.error || 'Lỗi không xác định');
+            if (result.error || !result.success) {
+                // Xử lý từ chối từ backend
+                if (result.error_code === 'TASK_RUNNING') {
+                    console.log('❌ Backend từ chối: Có task đang chạy');
+                    alert('⚠️ BACKEND TỪ CHỐI REQUEST!\n\n' +
+                          '• Server phát hiện có task khác đang chạy\n' +
+                          '• Chrome browser đang được sử dụng\n' +
+                          '• Vui lòng chờ task hiện tại hoàn thành\n\n' +
+                          'Hãy kiểm tra Chrome có đang mở FreePik không?');
+                }
+                throw new Error(result.message || result.error || 'Có lỗi xảy ra');
             }
             
-        } catch (error) {
-            alert('Lỗi: ' + error.message);
-            hideProcessingUI();
-            isProcessing = false;
-        }
-    });
+            currentTaskId = result.task_id;
+            console.log('🆔 Task ID:', currentTaskId);
+            startStatusChecking();
+        })
+        .catch(error => {
+            console.error('❌ Error:', error);
+            addLog(`❌ LỖI: ${error.message}`);
+            document.getElementById('statusMessage').innerHTML = 
+                `<i class="fas fa-exclamation-circle text-danger me-2"></i>Lỗi: ${error.message}`;
+            resetForm();
+        });
+    }
 
     // Clear buttons
     document.getElementById('clearBtn').addEventListener('click', function() {
@@ -383,6 +427,7 @@
         document.getElementById('noStatsSection').style.display = 'block';
         fileContent = '';
         parsedPrompts = [];
+        hideProcessingUI();
     });
 
     document.getElementById('clearLogBtn').addEventListener('click', function() {
@@ -415,19 +460,48 @@ Delicious Vietnamese pho bowl, traditional ingredients, appetizing presentation`
         window.URL.revokeObjectURL(url);
     });
 
+    function addLog(message) {
+        const logContainer = document.getElementById('logContainer');
+        const timestamp = new Date().toLocaleTimeString();
+        const logDiv = document.createElement('div');
+        logDiv.textContent = `[${timestamp}] ${message}`;
+        logDiv.className = 'mb-1';
+        
+        // Color coding for different log types
+        if (message.includes('✅')) {
+            logDiv.className += ' text-success';
+        } else if (message.includes('❌')) {
+            logDiv.className += ' text-danger';
+        } else if (message.includes('🔄')) {
+            logDiv.className += ' text-info';
+        } else if (message.includes('⏳')) {
+            logDiv.className += ' text-warning';
+        } else if (message.includes('🎉')) {
+            logDiv.className += ' text-success fw-bold';
+        }
+        
+        logContainer.appendChild(logDiv);
+        
+        // Auto scroll to bottom
+        logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
     function showProcessingUI() {
         document.getElementById('instructionSection').style.display = 'none';
         document.getElementById('statusSection').style.display = 'block';
         document.getElementById('logCard').style.display = 'block';
         document.getElementById('generateBtn').disabled = true;
-        document.getElementById('stopBtn').style.display = 'block';
+        isProcessing = true;
+        
+        // Xóa logs cũ
+        document.getElementById('logContainer').innerHTML = '';
+        addLog("🚀 Bắt đầu tiến trình tạo ảnh hàng loạt...");
     }
 
     function hideProcessingUI() {
         document.getElementById('instructionSection').style.display = 'block';
         document.getElementById('statusSection').style.display = 'none';
         document.getElementById('generateBtn').disabled = false;
-        document.getElementById('stopBtn').style.display = 'none';
         isProcessing = false;
     }
 
@@ -436,38 +510,41 @@ Delicious Vietnamese pho bowl, traditional ingredients, appetizing presentation`
             clearInterval(statusCheckInterval);
         }
         
-        statusCheckInterval = setInterval(async function() {
+        statusCheckInterval = setInterval(() => {
             if (!currentTaskId) return;
             
-            try {
-                const response = await fetch(`/api/task-status/${currentTaskId}`);
-                const data = await response.json();
-                
-                if (response.ok) {
+            fetch(`/api/task-status/${currentTaskId}`)
+                .then(response => response.json())
+                .then(data => {
                     updateUI(data);
                     
                     if (data.status === 'completed' || data.status === 'error') {
                         clearInterval(statusCheckInterval);
                         statusCheckInterval = null;
-                        hideProcessingUI();
                         
                         if (data.status === 'completed') {
                             showResults(data);
+                        } else {
+                            // Hiển thị lỗi
+                            document.getElementById('statusMessage').innerHTML = 
+                                `<i class="fas fa-exclamation-circle text-danger me-2"></i>Lỗi: ${data.message}`;
+                            document.getElementById('statusMessage').className = 'alert alert-danger';
                         }
-                    }
-                } else {
-                    console.error('Error checking status:', data.error);
+                        
+                        resetForm();
                 }
-            } catch (error) {
-                console.error('Status check failed:', error);
-            }
+                })
+                .catch(error => {
+                    console.error('Status check error:', error);
+                });
         }, 2000);
     }
 
     function updateUI(data) {
         // Update progress bar
-        document.getElementById('progressBar').style.width = data.progress + '%';
-        document.getElementById('progressText').textContent = data.progress + '%';
+        const progress = data.progress || 0;
+        document.getElementById('progressBar').style.width = progress + '%';
+        document.getElementById('progressText').textContent = progress + '%';
         
         // Update current prompt
         if (data.current_prompt) {
@@ -483,7 +560,7 @@ Delicious Vietnamese pho bowl, traditional ingredients, appetizing presentation`
         
         // Update status message
         document.getElementById('statusMessage').innerHTML = 
-            '<i class="fas fa-spinner fa-spin me-2"></i>' + data.message;
+            '<i class="fas fa-spinner fa-spin me-2"></i>' + (data.message || 'Đang xử lý...');
         
         // Update logs
         if (data.logs && data.logs.length > 0) {
@@ -556,6 +633,16 @@ Delicious Vietnamese pho bowl, traditional ingredients, appetizing presentation`
                 `;
                 gallery.appendChild(promptDiv);
             });
+        }
+    }
+
+    function resetForm() {
+        document.getElementById('generateBtn').disabled = false;
+        document.getElementById('generateBtn').innerHTML = '<i class="fas fa-play me-1"></i>Bắt đầu tạo ảnh';
+        currentTaskId = null;
+        if (statusCheckInterval) {
+            clearInterval(statusCheckInterval);
+            statusCheckInterval = null;
         }
     }
 </script>

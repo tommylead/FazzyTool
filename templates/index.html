@@ -14,14 +14,11 @@
                 Welcome to FazzyTool
             </h1>
             <p class="lead text-white-50 mb-4 fs-4">
-                Công cụ AI tự động tạo ảnh và video với Freepik Pikaso
+                Công cụ AI tự động tạo ảnh với Freepik Pikaso
             </p>
             <div class="d-flex gap-3 justify-content-center flex-wrap">
                 <a href="{{ url_for('generate_image_page') }}" class="btn btn-primary btn-lg">
                     <i class="fas fa-image me-2"></i>Tạo ảnh ngay
-                </a>
-                <a href="{{ url_for('generate_video_page') }}" class="btn btn-outline-primary btn-lg">
-                    <i class="fas fa-video me-2"></i>Tạo video ngay
                 </a>
             </div>
         </div>
@@ -29,9 +26,9 @@
 </div>
 
 <!-- Features Grid -->
-<div class="row g-4 mb-5">
+<div class="row g-4 mb-5 justify-content-center">
     <!-- Tạo ảnh -->
-    <div class="col-lg-3 col-md-6">
+    <div class="col-lg-4 col-md-6">
         <div class="card h-100 text-center border-0 feature-card">
             <div class="card-body p-4">
                 <div class="feature-icon mb-3">
@@ -48,26 +45,8 @@
         </div>
     </div>
 
-    <!-- Tạo video -->
-    <div class="col-lg-3 col-md-6">
-        <div class="card h-100 text-center border-0 feature-card">
-            <div class="card-body p-4">
-                <div class="feature-icon mb-3">
-                    <i class="fas fa-video fa-3x text-success"></i>
-                </div>
-                <h5 class="card-title fw-bold mb-3">Tạo video AI</h5>
-                <p class="card-text text-muted mb-4">
-                    Tạo video động từ văn bản hoặc ảnh với công nghệ AI tiên tiến
-                </p>
-                <a href="{{ url_for('generate_video_page') }}" class="btn btn-success">
-                    <i class="fas fa-film me-2"></i>Tạo video
-                </a>
-            </div>
-        </div>
-    </div>
-
     <!-- Tạo prompt AI -->
-    <div class="col-lg-3 col-md-6">
+    <div class="col-lg-4 col-md-6">
         <div class="card h-100 text-center border-0 feature-card">
             <div class="card-body p-4">
                 <div class="feature-icon mb-3">
@@ -85,7 +64,7 @@
     </div>
 
     <!-- Xử lý hàng loạt -->
-    <div class="col-lg-3 col-md-6">
+    <div class="col-lg-4 col-md-6">
         <div class="card h-100 text-center border-0 feature-card">
             <div class="card-body p-4">
                 <div class="feature-icon mb-3">
@@ -93,7 +72,7 @@
                 </div>
                 <h5 class="card-title fw-bold mb-3">Batch Processing</h5>
                 <p class="card-text text-muted mb-4">
-                    Xử lý hàng loạt để tạo nhiều ảnh/video cùng một lúc
+                    Xử lý hàng loạt để tạo nhiều ảnh cùng một lúc
                 </p>
                 <a href="{{ url_for('batch_process_page') }}" class="btn btn-info">
                     <i class="fas fa-rocket me-2"></i>Batch
@@ -124,8 +103,8 @@
                 </div>
             </div>
             <div class="card-body pt-4">
-                <div class="row g-4">
-                    <div class="col-lg-3 col-md-6">
+                <div class="row g-4 justify-content-center">
+                    <div class="col-lg-4 col-md-6">
                         <div class="stat-item p-3 rounded-3 bg-primary bg-opacity-10 border border-primary border-opacity-20">
                             <div class="d-flex align-items-center">
                                 <div class="stat-icon me-3">
@@ -139,21 +118,7 @@
                         </div>
                     </div>
                     
-                    <div class="col-lg-3 col-md-6">
-                        <div class="stat-item p-3 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-20">
-                            <div class="d-flex align-items-center">
-                                <div class="stat-icon me-3">
-                                    <i class="fas fa-video fa-2x text-success"></i>
-                                </div>
-                                <div>
-                                    <h3 id="total-videos" class="mb-0 fw-bold text-success">0</h3>
-                                    <small class="text-muted fw-medium">Video đã tạo</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-lg-3 col-md-6">
+                    <div class="col-lg-4 col-md-6">
                         <div class="stat-item p-3 rounded-3 bg-warning bg-opacity-10 border border-warning border-opacity-20">
                             <div class="d-flex align-items-center">
                                 <div class="stat-icon me-3">
@@ -167,7 +132,7 @@
                         </div>
                     </div>
                     
-                    <div class="col-lg-3 col-md-6">
+                    <div class="col-lg-4 col-md-6">
                         <div class="stat-item p-3 rounded-3 bg-info bg-opacity-10 border border-info border-opacity-20">
                             <div class="d-flex align-items-center">
                                 <div class="stat-icon me-3">
@@ -189,7 +154,7 @@
 <!-- Recent Content -->
 <div class="row g-4">
     <!-- Recent Images -->
-    <div class="col-md-6">
+    <div class="col-md-12">
         <div class="card border-0 h-100">
             <div class="card-header bg-transparent border-bottom-0 pb-0">
                 <div class="d-flex align-items-center justify-content-between">
@@ -214,33 +179,6 @@
             </div>
         </div>
     </div>
-    
-    <!-- Recent Videos -->
-    <div class="col-md-6">
-        <div class="card border-0 h-100">
-            <div class="card-header bg-transparent border-bottom-0 pb-0">
-                <div class="d-flex align-items-center justify-content-between">
-                    <h6 class="card-title mb-0 d-flex align-items-center">
-                        <i class="fas fa-video me-2 text-success"></i>
-                        <span class="fw-bold">Video gần đây</span>
-                    </h6>
-                    <a href="{{ url_for('generate_video_page') }}" class="btn btn-sm btn-outline-success">
-                        <i class="fas fa-plus me-1"></i>Tạo thêm
-                    </a>
-                </div>
-            </div>
-            <div class="card-body">
-                <div id="recent-videos" class="row g-2">
-                    <div class="col-12 text-center py-4">
-                        <div class="spinner-border text-success" role="status">
-                            <span class="visually-hidden">Đang tải...</span>
-                        </div>
-                        <p class="text-muted mt-2 mb-0">Đang tải video...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <!-- Quick Actions -->
@@ -249,13 +187,13 @@
         <div class="card border-0 bg-gradient">
             <div class="card-body text-center py-5">
                 <h4 class="fw-bold mb-3">Sẵn sàng tạo nội dung AI?</h4>
-                <p class="text-muted mb-4">Khám phá sức mạnh của AI trong việc tạo ảnh và video chất lượng cao</p>
+                <p class="text-muted mb-4">Khám phá sức mạnh của AI trong việc tạo ảnh chất lượng cao</p>
                 <div class="d-flex gap-3 justify-content-center flex-wrap">
                     <a href="{{ url_for('generate_image_page') }}" class="btn btn-primary">
                         <i class="fas fa-image me-2"></i>Tạo ảnh đầu tiên
                     </a>
-                    <a href="{{ url_for('generate_video_page') }}" class="btn btn-success">
-                        <i class="fas fa-video me-2"></i>Tạo video đầu tiên
+                    <a href="{{ url_for('generate_prompt_page') }}" class="btn btn-warning">
+                        <i class="fas fa-magic me-2"></i>AI Prompt
                     </a>
                     <a href="{{ url_for('settings_page') }}" class="btn btn-outline-secondary">
                         <i class="fas fa-cog me-2"></i>Cài đặt
@@ -323,10 +261,7 @@
         object-fit: cover;
     }
     
-    .recent-item video {
-        aspect-ratio: 16/9;
-        object-fit: cover;
-    }
+
 </style>
 {% endblock %}
 
@@ -341,30 +276,25 @@
     function loadStatistics() {
         // Show loading state
         document.getElementById('total-images').innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        document.getElementById('total-videos').innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         document.getElementById('total-prompts').innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         document.getElementById('total-time').innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         
         Promise.all([
             fetch('/api/images').then(r => r.json()).catch(() => []),
-            fetch('/api/videos').then(r => r.json()).catch(() => []),
             fetch('/api/prompts').then(r => r.json()).catch(() => [])
-        ]).then(([images, videos, prompts]) => {
+        ]).then(([images, prompts]) => {
             const imageCount = Array.isArray(images) ? images.length : 0;
-            const videoCount = Array.isArray(videos) ? videos.length : 0;
             const promptCount = Array.isArray(prompts) ? prompts.length : 0;
             
             document.getElementById('total-images').textContent = imageCount;
-            document.getElementById('total-videos').textContent = videoCount;
             document.getElementById('total-prompts').textContent = promptCount;
             
-            // Estimate time saved (2 min per image, 5 min per video, 1 min per prompt)
-            const timeSaved = (imageCount * 2 + videoCount * 5 + promptCount * 1) / 60;
+            // Estimate time saved (2 min per image, 1 min per prompt)
+            const timeSaved = (imageCount * 2 + promptCount * 1) / 60;
             document.getElementById('total-time').textContent = timeSaved.toFixed(1) + 'h';
         }).catch(error => {
             console.error('Error loading statistics:', error);
             document.getElementById('total-images').textContent = '?';
-            document.getElementById('total-videos').textContent = '?';
             document.getElementById('total-prompts').textContent = '?';
             document.getElementById('total-time').textContent = '?';
         });
@@ -372,7 +302,6 @@
     
     function loadRecentFiles() {
         loadRecentImages();
-        loadRecentVideos();
     }
     
     function loadRecentImages() {
@@ -409,48 +338,6 @@
                     <div class="col-12 text-center py-4">
                         <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
                         <p class="text-muted mb-0">Không thể tải ảnh</p>
-                    </div>
-                `;
-            });
-    }
-    
-    function loadRecentVideos() {
-        fetch('/api/videos')
-            .then(r => r.json())
-            .then(videos => {
-                const container = document.getElementById('recent-videos');
-                
-                if (!Array.isArray(videos) || videos.length === 0) {
-                    container.innerHTML = `
-                        <div class="col-12 text-center py-4">
-                            <i class="fas fa-video fa-3x text-muted mb-3"></i>
-                            <p class="text-muted mb-2">Chưa có video nào</p>
-                            <a href="${window.location.origin}/generate_video" class="btn btn-sm btn-success">
-                                <i class="fas fa-plus me-1"></i>Tạo video đầu tiên
-                            </a>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                const recentVideos = videos.slice(-4).reverse();
-                container.innerHTML = recentVideos.map(video => `
-                    <div class="col-lg-6 col-md-12">
-                        <div class="recent-item border">
-                            <video class="w-100" controls muted>
-                                <source src="${video.path}" type="video/mp4">
-                                Video không được hỗ trợ
-                            </video>
-                        </div>
-                    </div>
-                `).join('');
-            })
-            .catch(error => {
-                console.error('Error loading recent videos:', error);
-                document.getElementById('recent-videos').innerHTML = `
-                    <div class="col-12 text-center py-4">
-                        <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
-                        <p class="text-muted mb-0">Không thể tải video</p>
                     </div>
                 `;
             });

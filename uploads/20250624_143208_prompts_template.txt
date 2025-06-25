@@ -1,0 +1,168 @@
+HƯỚNG DẪN TẠO PROMPT HÀNG LOẠT - PHIÊN BẢN TỐI ỬU:
+
+Có 3 cách để tạo prompt với cấu hình nâng cao:
+
+=== CÁCH 1: SỬ DỤNG AI GEMINI (TỰ ĐỘNG) ===
+Chỉ cần ghi ý tưởng đơn giản, AI sẽ tự động tạo prompt chi tiết:
+
+PROMPT_IDEA_START
+Tạo ảnh mèo dễ thương ngồi trên bàn gỗ
+PROMPT_IDEA_END
+
+PROMPT_IDEA_START  
+Thiết kế poster quảng cáo cafe hiện đại
+PROMPT_IDEA_END
+
+PROMPT_IDEA_START
+Cảnh hoàng hôn trên bãi biển với sóng nhẹ
+PROMPT_IDEA_END
+
+=== CÁCH 2: PROMPT CHI TIẾT (THỦ CÔNG) ===
+Ghi prompt chi tiết theo format:
+
+DETAILED_PROMPT_START
+A cute orange cat sitting on a wooden table, soft natural lighting, photorealistic, 4K quality, shallow depth of field
+DETAILED_PROMPT_END
+
+DETAILED_PROMPT_START
+Modern minimalist coffee shop poster design, warm brown and cream colors, elegant typography, clean layout, professional
+DETAILED_PROMPT_END
+
+=== CÁCH 3: JSON FORMAT NÂNG CAO (CHO NGƯỜI AM HIỂU) ===
+Format JSON chuẩn với cấu hình chi tiết:
+
+JSON_PROMPTS_START
+[
+  {
+    "prompt": "Beautiful sunset landscape with mountains",
+    "style": "photorealistic",
+    "type": "image",
+    "num_images": 6,
+    "download_count": 3,
+    "filename_prefix": "sunset_landscape"
+  },
+  {
+    "prompt": "Corporate logo animation with modern style",
+    "style": "modern",
+    "type": "video",
+    "filename_prefix": "corporate_logo"
+  },
+  {
+    "prompt": "Cute puppy playing in garden, high quality photography",
+    "style": "photorealistic", 
+    "type": "image",
+    "num_images": 8,
+    "download_count": 4,
+    "filename_prefix": "cute_puppy"
+  },
+  {
+    "prompt": "Camera slowly zooming into mountain landscape",
+    "style": "cinematic",
+    "type": "video"
+  }
+]
+JSON_PROMPTS_END
+
+=== CẤU HÌNH NÂNG CAO ===
+
+🎛️ **Tùy chọn JSON (chỉ áp dụng cho JSON_PROMPTS):**
+- `num_images`: Số lượng ảnh AI sẽ sinh ra (mặc định: 4)
+- `download_count`: Số lượng ảnh tải về (mặc định: 2, None = tải tất cả)
+- `filename_prefix`: Tiền tố tên file (mặc định: tự động tạo)
+- `style`: Phong cách ảnh (photorealistic, artistic, cartoon, v.v.)
+- `type`: Loại media ("image" hoặc "video")
+
+📋 **Cấu hình mặc định (config_template.txt):**
+```
+default_num_images=4          # Số ảnh sinh mặc định
+default_download_count=2      # Số ảnh tải mặc định  
+auto_filename_prefix=true     # Tự động tạo tên file
+```
+
+=== WORKFLOW THÔNG MINH ===
+
+🔄 **Quy trình tự động:**
+
+1. **Image Only**: Tool chỉ tạo ảnh với cấu hình nâng cao
+   - Mỗi prompt có thể sinh 1-10 ảnh
+   - Tự chọn số lượng ảnh tải về
+   - Tên file theo thứ tự rõ ràng
+
+2. **Image → Video**: Tạo ảnh trước → Dùng ảnh làm video
+   - Ảnh 1 → Video 1, Ảnh 2 → Video 2, ...
+   - Đảm bảo tương ứng 1:1
+
+3. **Video từ ảnh có sẵn**: Dùng ảnh trong output/ làm video
+
+💡 **Ví dụ thực tế - Mix cả 3 cách:**
+
+```
+PROMPT_IDEA_START
+Chó corgi dễ thương chạy trên cỏ xanh
+PROMPT_IDEA_END
+
+DETAILED_PROMPT_START  
+Professional business woman in modern office, confident pose, natural lighting, corporate photography style
+DETAILED_PROMPT_END
+
+JSON_PROMPTS_START
+[
+  {
+    "prompt": "Mystical forest with glowing fireflies at night",
+    "style": "fantasy",
+    "type": "image", 
+    "num_images": 10,
+    "download_count": 5,
+    "filename_prefix": "mystical_forest"
+  }
+]
+JSON_PROMPTS_END
+```
+
+=== THỨ TỰ VÀ TỔ CHỨC FILE ===
+
+📁 **Cấu trúc file đầu ra:**
+```
+output/
+├── ai_idea_001_001_1750227744.png
+├── ai_idea_001_002_1750227756.png  
+├── detailed_001_001_1750227789.png
+├── mystical_forest_001_1750227823.png
+├── mystical_forest_002_1750227834.png
+└── batch_report_20241218_143045.json
+```
+
+🏷️ **Format tên file:**
+`{prefix}_{số_thứ_tự}_{timestamp}.png`
+
+- prefix: Tiền tố nhận dạng (ai_idea_001, detailed_001, v.v.)
+- số_thứ_tự: 001, 002, 003... cho từng ảnh trong prompt
+- timestamp: Thời gian tạo để tránh trùng lặp
+
+=== HƯỚNG DẪN SỬ DỤNG ===
+
+1. **Chuẩn bị**: Chọn 1 trong 3 cách hoặc mix cả 3
+2. **Cấu hình**: Điều chỉnh số lượng ảnh, tên file theo ý muốn
+3. **Xóa phần không dùng**: Để file gọn gàng
+4. **Chạy batch**: `python main.py batch`
+5. **Kiểm tra kết quả**: Xem trong output/ và file báo cáo
+
+💡 **Tips tối ưu:**
+- Bắt đầu với 2-4 ảnh per prompt để test
+- Dùng filename_prefix để dễ phân loại
+- Kiểm tra credits trước khi chạy batch lớn
+- Backup file quan trọng
+
+=== TROUBLESHOOTING ===
+
+❌ **Lỗi thường gặp:**
+- File không đúng thứ tự → Kiểm tra timestamp
+- Tải nhầm ảnh → Dùng filename_prefix rõ ràng  
+- Hết credits → Kiểm tra ước tính trước khi chạy
+- Cookie hết hạn → Cập nhật cookie_template.txt
+
+✅ **Best practices:**
+- Test với 1-2 prompt trước khi batch lớn
+- Sử dụng --dry-run để preview
+- Backup cấu hình quan trọng
+- Monitor quá trình để kịp thời dừng nếu cần 

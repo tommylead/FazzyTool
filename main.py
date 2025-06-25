@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-FAZZYTOOL - Công cụ tự động sinh ảnh và video bằng Freepik AI
+FAZZYTOOL - Công cụ tự động sinh ảnh bằng Freepik AI
 
-Tool này tự động hóa việc sinh ảnh và video trên nền tảng Freepik Pikaso
+Tool này tự động hóa việc sinh ảnh trên nền tảng Freepik Pikaso
 thông qua trình duyệt tự động, dựa trên prompt do người dùng hoặc Gemini API sinh ra.
 """
 
@@ -19,7 +19,6 @@ from dotenv import load_dotenv
 from prompt_loader import PromptLoader
 from gemini_prompt import GeminiPromptGenerator
 from browser_image import FreepikImageGenerator
-from browser_video import FreepikVideoGenerator
 from batch_processor import BatchProcessor
 
 # Global configuration cho AI generation
@@ -51,7 +50,7 @@ def print_banner():
     ╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝   ╚═╝      ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝
     {Colors.ENDC}                                                                        
 
-    {Colors.GREEN}{Colors.BOLD}Tool tự động sinh ảnh và video AI từ Freepik Pikaso{Colors.ENDC}
+    {Colors.GREEN}{Colors.BOLD}Tool tự động sinh ảnh AI từ Freepik Pikaso{Colors.ENDC}
     """
     print(banner)
 
@@ -206,36 +205,8 @@ def process_single_image_batch(prompt_item: Dict, show_browser: bool, cookies: L
         return []
 
 
-def process_single_video_from_image(prompt_item: Dict, image_path: str, show_browser: bool, cookies: List[Dict]) -> Optional[str]:
-    """Xử lý tạo một video từ ảnh và prompt item"""
-    try:
-        from browser_video import FreepikVideoGenerator
-        
-        output_dir = create_output_dir()
-        video_generator = FreepikVideoGenerator(headless=(not show_browser), output_dir=output_dir)
-        
-        # Chuyển cookies thành string format
-        cookie_string = json.dumps(cookies) if cookies else None
-        
-        # Lấy thông tin video từ prompt item
-        duration = prompt_item.get('duration', '5s')
-        ratio = prompt_item.get('ratio', '1:1')
-        
-        video_path = video_generator.generate_video_from_image(
-            image_path=image_path,
-            prompt=prompt_item['content'],
-            cookie_string=cookie_string,
-            duration=duration,
-            ratio=ratio
-        )
-        return video_path
-        
-    except Exception as e:
-        print(f"❌ Lỗi tạo video: {e}")
-        return None
 
-
-def process_file_prompt(file_path: str, generate_image: bool, generate_video: bool, show_browser: bool):
+def process_file_prompt(file_path: str, generate_image: bool, show_browser: bool):
     """Xử lý prompt từ file"""
     try:
         print(f"{Colors.BLUE}Đang đọc prompt từ file: {file_path}{Colors.ENDC}")
@@ -269,39 +240,15 @@ def process_file_prompt(file_path: str, generate_image: bool, generate_video: bo
                 results["image_paths"] = downloaded_files
                 results["image_path"] = downloaded_files[0]  # Để tương thích code cũ
         
-        # Sinh video nếu được yêu cầu
-        if generate_video:
-            video_prompt = prompt_data.get("video_prompt", "")
-            video_duration = prompt_data.get("video_duration", "5s")
-            video_ratio = prompt_data.get("video_ratio", "1:1")
-            
-            print(f"{Colors.GREEN}Đang sinh video với prompt: {video_prompt[:50]}...{Colors.ENDC}")
-            print(f"{Colors.GREEN}Thời lượng: {video_duration}, Tỷ lệ: {video_ratio}{Colors.ENDC}")
-            
-            # Load cookies
-            cookies = load_cookie_from_template()
-            cookie_string = json.dumps(cookies) if cookies else None
-            
-            video_generator = FreepikVideoGenerator(headless=(not show_browser), output_dir=output_dir)
-            video_path = video_generator.generate_video(
-                video_prompt, 
-                duration=video_duration,
-                ratio=video_ratio,
-                cookie_string=cookie_string
-            )
-            
-            if video_path:
-                results["video_path"] = video_path
+
         
         # Hiển thị kết quả
         print(f"\n{Colors.BLUE}{Colors.BOLD}KẾT QUẢ:{Colors.ENDC}")
         if "image_path" in results:
             print(f"{Colors.GREEN}✓ Ảnh được lưu tại: {results['image_path']}{Colors.ENDC}")
-        if "video_path" in results:
-            print(f"{Colors.GREEN}✓ Video được lưu tại: {results['video_path']}{Colors.ENDC}")
         
         if not results:
-            print(f"{Colors.WARNING}Không có kết quả nào được tạo.{Colors.ENDC}")
+            print(f"{Colors.WARNING}Không có kết quả nào được tạo ra.{Colors.ENDC}")
             
         return True
         
@@ -312,7 +259,7 @@ def process_file_prompt(file_path: str, generate_image: bool, generate_video: bo
         return False
 
 
-def process_ai_prompt(topic: str, generate_image: bool, generate_video: bool, show_browser: bool):
+def process_ai_prompt(topic: str, generate_image: bool, show_browser: bool, num_images: int, download_count: Optional[int]):
     """Xử lý prompt AI với cải tiến lưu file và fallback options"""
     try:
         # Khởi tạo Gemini generator với thư mục prompts
@@ -342,7 +289,7 @@ def process_ai_prompt(topic: str, generate_image: bool, generate_video: bool, sh
             print(f"✅ Đã sinh prompt AI thành công!")
             print(f"📁 File prompt: {prompt_data.get('file_path', 'Unknown')}")
             print(f"🎨 Image prompt: {prompt_data['image_prompt'][:100]}...")
-            print(f"🎬 Video prompt: {prompt_data['video_prompt'][:100]}...")
+
             
         except Exception as gemini_error:
             error_msg = str(gemini_error)
@@ -410,29 +357,7 @@ def process_ai_prompt(topic: str, generate_image: bool, generate_video: bool, sh
             except Exception as e:
                 print(f"{Colors.FAIL}❌ Lỗi sinh ảnh: {e}{Colors.ENDC}")
         
-        # Xử lý sinh video (giữ nguyên logic cũ)
-        if generate_video:
-            try:
-                print(f"\n{Colors.BLUE}🎬 Bắt đầu sinh video...{Colors.ENDC}")
-                
-                video_generator = FreepikVideoGenerator(headless=not show_browser)
-                cookie_string = json.dumps(cookies) if cookies else None
-                
-                video_path = video_generator.generate_video(
-                    prompt=prompt_data['video_prompt'],
-                    duration=prompt_data.get('video_duration', '5s'),
-                    ratio=prompt_data.get('video_ratio', '1:1'),
-                    cookie_string=cookie_string
-                )
-                
-                if video_path:
-                    success_count += 1
-                    print(f"{Colors.GREEN}✅ Đã sinh video: {os.path.basename(video_path)}{Colors.ENDC}")
-                else:
-                    print(f"{Colors.FAIL}❌ Thất bại sinh video{Colors.ENDC}")
-                    
-            except Exception as e:
-                print(f"{Colors.FAIL}❌ Lỗi sinh video: {e}{Colors.ENDC}")
+
         
         return success_count > 0
         
@@ -447,26 +372,11 @@ def create_manual_prompt(topic: str) -> Optional[Dict[str, Any]]:
         
         # Template prompt cơ bản dựa trên topic
         prompt_templates = {
-            'mèo': {
-                'image': 'Cute orange cat sitting by the window, soft natural lighting, photorealistic, high quality, 4K',
-                'video': 'Cat moving gracefully, gentle camera movement, warm lighting, cozy atmosphere'
-            },
-            'chó': {
-                'image': 'Adorable puppy playing in garden, natural lighting, photorealistic, high quality, 4K',
-                'video': 'Puppy running and playing, dynamic camera movement, outdoor setting, cheerful mood'
-            },
-            'cảnh': {
-                'image': 'Beautiful landscape with mountains and sky, golden hour lighting, cinematic, high quality, 4K',
-                'video': 'Slow camera pan across landscape, peaceful atmosphere, natural lighting'
-            },
-            'poster': {
-                'image': 'Modern minimalist poster design, clean layout, professional typography, contemporary style',
-                'video': 'Logo animation with smooth transitions, professional presentation, modern style'
-            },
-            'logo': {
-                'image': 'Creative logo design, modern style, clean lines, professional appearance, vector art',
-                'video': 'Logo reveal animation, smooth transitions, professional presentation'
-            }
+            'mèo': 'Cute orange cat sitting by the window, soft natural lighting, photorealistic, high quality, 4K',
+            'chó': 'Adorable puppy playing in garden, natural lighting, photorealistic, high quality, 4K',
+            'cảnh': 'Beautiful landscape with mountains and sky, golden hour lighting, cinematic, high quality, 4K',
+            'poster': 'Modern minimalist poster design, clean layout, professional typography, contemporary style',
+            'logo': 'Creative logo design, modern style, clean lines, professional appearance, vector art'
         }
         
         # Tìm template phù hợp
@@ -480,18 +390,12 @@ def create_manual_prompt(topic: str) -> Optional[Dict[str, Any]]:
         
         # Fallback template nếu không tìm thấy
         if not selected_template:
-            selected_template = {
-                'image': f'High quality image of {topic}, professional photography, detailed, 4K resolution, natural lighting',
-                'video': f'Cinematic video about {topic}, smooth camera movement, professional cinematography, high quality'
-            }
+            selected_template = f'High quality image of {topic}, professional photography, detailed, 4K resolution, natural lighting'
         
         # Tạo prompt data
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         prompt_data = {
-            'image_prompt': selected_template['image'],
-            'video_prompt': selected_template['video'],
-            'video_duration': '5s',
-            'video_ratio': '1:1',
+            'image_prompt': selected_template,
             'topic': topic,
             'prompt_id': f'manual_{timestamp}',
             'generated_at': datetime.now().isoformat(),
@@ -521,58 +425,31 @@ def create_manual_prompt(topic: str) -> Optional[Dict[str, Any]]:
 
 @click.group()
 def cli():
-    """FAZZYTOOL - Công cụ tự động sinh ảnh và video AI từ Freepik Pikaso"""
-    print_banner()
-    
-    # Kiểm tra môi trường
-    if not validate_environment():
-        sys.exit(1)
-
+    """FazzyTool - Công cụ dòng lệnh"""
+    pass
 
 @cli.command()
 @click.option('--file', '-f', type=str, help='Đường dẫn tới file prompt (.txt, .json, .docx)')
 @click.option('--image/--no-image', default=True, help='Sinh ảnh (mặc định: True)')
-@click.option('--video/--no-video', default=True, help='Sinh video (mặc định: True)')
 @click.option('--show-browser/--headless', default=False, help='Hiển thị trình duyệt (mặc định: False)')
-def file(file, image, video, show_browser):
-    """Sinh ảnh/video từ prompt trong file"""
+def file(file, image, show_browser):
+    """Sinh ảnh từ prompt trong file"""
     if not file:
-        print(f"{Colors.FAIL}Vui lòng cung cấp đường dẫn file với tùy chọn --file{Colors.ENDC}")
-        sys.exit(1)
+        print(f"{Colors.FAIL}Lỗi: Cần cung cấp file prompt qua --file.{Colors.ENDC}")
+        return
         
-    if not os.path.exists(file):
-        print(f"{Colors.FAIL}Không tìm thấy file: {file}{Colors.ENDC}")
-        sys.exit(1)
-        
-    success = process_file_prompt(file, image, video, show_browser)
-    if not success:
-        sys.exit(1)
-
+    process_file_prompt(file, image, show_browser)
 
 @cli.command()
 @click.option('--topic', '-t', type=str, required=True, help='Chủ đề để sinh prompt (tiếng Việt)')
 @click.option('--image/--no-image', default=True, help='Sinh ảnh (mặc định: True)')
-@click.option('--video/--no-video', default=True, help='Sinh video (mặc định: True)')
 @click.option('--show-browser/--headless', default=False, help='Hiển thị trình duyệt (mặc định: False)')
-@click.option('--num-images', default=4, help='Số lượng ảnh sinh ra (mặc định: 4)')
 @click.option('--download-count', default=None, type=int, help='Số lượng ảnh tải về (mặc định: tất cả)')
-def ai(topic, image, video, show_browser, num_images, download_count):
-    """Sinh ảnh/video từ chủ đề bằng Gemini AI với tùy chọn nâng cao"""
-    if not topic:
-        print(f"{Colors.FAIL}Vui lòng cung cấp chủ đề với tùy chọn --topic{Colors.ENDC}")
-        sys.exit(1)
-    
-    # Cập nhật global config cho AI generation
-    global AI_GENERATION_CONFIG
-    AI_GENERATION_CONFIG = {
-        'num_images': num_images,
-        'download_count': download_count if download_count is not None else num_images
-    }
-        
-    success = process_ai_prompt(topic, image, video, show_browser)
-    if not success:
-        sys.exit(1)
-
+def ai(topic, image, show_browser, download_count):
+    """Sinh prompt bằng AI và tùy chọn sinh ảnh/video."""
+    if not validate_environment():
+        return
+    process_ai_prompt(topic, image, show_browser, 4, download_count)
 
 @cli.command()
 @click.option('--topics', '-t', multiple=True, help='Danh sách chủ đề (có thể lặp lại nhiều lần)')
@@ -581,812 +458,262 @@ def ai(topic, image, video, show_browser, num_images, download_count):
 def ai_batch(topics, file, start_index):
     """Sinh nhiều prompt AI từ danh sách chủ đề và lưu thành file có thứ tự"""
     
-    topic_list = list(topics) if topics else []
+    topic_list = list(topics)
     
     # Đọc từ file nếu có
     if file:
         try:
             with open(file, 'r', encoding='utf-8') as f:
-                file_topics = [line.strip() for line in f if line.strip()]
-                topic_list.extend(file_topics)
+                topic_list.extend([line.strip() for line in f if line.strip()])
         except Exception as e:
             print(f"{Colors.FAIL}❌ Lỗi đọc file {file}: {e}{Colors.ENDC}")
             return
     
     if not topic_list:
-        print(f"{Colors.FAIL}Vui lòng cung cấp chủ đề qua --topics hoặc --file{Colors.ENDC}")
-        print("Ví dụ:")
-        print("  python main.py ai-batch -t 'Mèo dễ thương' -t 'Chó nhỏ' -t 'Hoa đẹp'")
-        print("  python main.py ai-batch -f topics.txt")
+        print(f"{Colors.FAIL}Lỗi: Không có chủ đề nào để xử lý.{Colors.ENDC}")
         return
-    
-    try:
-        print(f"{Colors.BLUE}🚀 Bắt đầu sinh {len(topic_list)} prompt AI...{Colors.ENDC}")
-        
-        gemini_generator = GeminiPromptGenerator(output_dir="prompts")
-        results = gemini_generator.generate_batch_prompts(topic_list, start_index)
-        
-        # Thống kê kết quả
-        successful = len([r for r in results if "error" not in r])
-        failed = len([r for r in results if "error" in r])
-        
-        print(f"\n{Colors.GREEN}{Colors.BOLD}✅ HOÀN THÀNH BATCH AI GENERATION{Colors.ENDC}")
-        print(f"{Colors.GREEN}Thành công: {successful}/{len(topic_list)}{Colors.ENDC}")
-        print(f"{Colors.FAIL}Thất bại: {failed}/{len(topic_list)}{Colors.ENDC}")
-        print(f"{Colors.BLUE}📁 Tất cả file đã lưu trong thư mục: prompts/{Colors.ENDC}")
-        
-    except Exception as e:
-        print(f"{Colors.FAIL}❌ Lỗi batch AI generation: {e}{Colors.ENDC}")
 
+    print(f"{Colors.BLUE}Bắt đầu tạo batch {len(topic_list)} prompts...{Colors.ENDC}")
+    
+    # Tạo thư mục prompts nếu chưa có
+    prompts_dir = "prompts"
+    os.makedirs(prompts_dir, exist_ok=True)
+    
+    # Tạo các prompts
+    for i, topic in enumerate(topic_list, start=start_index):
+        print(f"  {Colors.GREEN}Đang tạo prompt {i} cho chủ đề: '{topic}'...{Colors.ENDC}")
+        try:
+            create_manual_prompt(topic)
+        except Exception as e:
+            print(f"  {Colors.FAIL}Lỗi khi tạo prompt cho '{topic}': {e}{Colors.ENDC}")
+    
+    print(f"\n{Colors.GREEN}✅ Đã tạo thành công {len(topic_list)} file prompt trong thư mục '{prompts_dir}'.{Colors.ENDC}")
+    print(f"{Colors.WARNING}Sử dụng 'python main.py batch' để bắt đầu xử lý hàng loạt.{Colors.ENDC}")
 
 @cli.command()
 @click.option('--show-browser/--headless', default=False, help='Hiển thị trình duyệt (mặc định: False)')
 @click.option('--dry-run', is_flag=True, help='Chỉ xem thông tin batch mà không thực thi')
 def batch(show_browser, dry_run):
-    """Xử lý hàng loạt từ file template"""
-    try:
-        processor = BatchProcessor()
-        batch_job = processor.create_batch_job()
+    """Xử lý hàng loạt các file prompt trong thư mục 'prompts'."""
+    if not validate_environment():
+        return
         
-        # Hiển thị tóm tắt batch
-        is_valid = processor.print_batch_summary(batch_job)
-        
-        if not is_valid:
-            print(f"\n{Colors.FAIL}❌ Batch job không hợp lệ. Vui lòng kiểm tra các file template.{Colors.ENDC}")
-            return
-            
-        if dry_run:
-            print(f"\n{Colors.BLUE}🔍 DRY RUN - Chỉ xem thông tin, không thực thi{Colors.ENDC}")
-            return
-            
-        # Xác nhận từ người dùng
-        print(f"\n{Colors.WARNING}Bạn có muốn tiếp tục xử lý batch này? (y/N): {Colors.ENDC}", end="")
-        confirm = input().strip().lower()
-        
-        if confirm not in ['y', 'yes', 'có']:
-            print(f"{Colors.BLUE}Đã hủy batch job.{Colors.ENDC}")
-            return
-            
-        # Thực thi batch theo workflow
-        print(f"\n{Colors.GREEN}🚀 Bắt đầu xử lý batch...{Colors.ENDC}")
-        results = []
-        workflow = batch_job.get('workflow', 'unknown')
-        
-        if workflow == 'image_then_video':
-            # Workflow: Tạo ảnh trước, sau đó dùng ảnh để tạo video
-            print(f"{Colors.BLUE}📋 Workflow: Tạo ảnh trước → Dùng ảnh tạo video{Colors.ENDC}")
-            
-            # Bước 1: Tạo tất cả ảnh
-            created_images = []
-            for i, prompt_item in enumerate(batch_job['image_prompts'], 1):
-                print(f"\n{Colors.BLUE}[Ảnh {i}/{len(batch_job['image_prompts'])}] {prompt_item['content'][:50]}...{Colors.ENDC}")
-                
-                try:
-                    image_path = process_single_image(prompt_item, show_browser, batch_job['cookies'])
-                    if image_path:
-                        created_images.append(image_path)
-                        results.append({'prompt': prompt_item['content'], 'type': 'image', 'status': 'success', 'path': image_path})
-                    else:
-                        results.append({'prompt': prompt_item['content'], 'type': 'image', 'status': 'failed'})
-                        
-                    # Delay
-                    if i < len(batch_job['image_prompts']):
-                        delay = batch_job['config']['delay_between_requests']
-                        print(f"{Colors.BLUE}Chờ {delay}s...{Colors.ENDC}")
-                        import time
-                        time.sleep(delay)
-                        
-                except Exception as e:
-                    print(f"{Colors.FAIL}Lỗi tạo ảnh {i}: {str(e)}{Colors.ENDC}")
-                    results.append({'prompt': prompt_item['content'], 'type': 'image', 'status': 'failed', 'error': str(e)})
-            
-            # Bước 2: Dùng ảnh vừa tạo để tạo video
-            for i, prompt_item in enumerate(batch_job['video_prompts'], 1):
-                print(f"\n{Colors.BLUE}[Video {i}/{len(batch_job['video_prompts'])}] {prompt_item['content'][:50]}...{Colors.ENDC}")
-                
-                try:
-                    if i <= len(created_images):
-                        image_path = created_images[i-1]
-                        video_path = process_single_video_from_image(prompt_item, image_path, show_browser, batch_job['cookies'])
-                        if video_path:
-                            results.append({'prompt': prompt_item['content'], 'type': 'video', 'status': 'success', 'path': video_path, 'source_image': image_path})
-                        else:
-                            results.append({'prompt': prompt_item['content'], 'type': 'video', 'status': 'failed'})
-                    else:
-                        print(f"{Colors.WARNING}Không có ảnh tương ứng cho video prompt {i}{Colors.ENDC}")
-                        results.append({'prompt': prompt_item['content'], 'type': 'video', 'status': 'failed', 'error': 'No corresponding image'})
-                        
-                    # Delay
-                    if i < len(batch_job['video_prompts']):
-                        delay = batch_job['config']['delay_between_requests']
-                        print(f"{Colors.BLUE}Chờ {delay}s...{Colors.ENDC}")
-                        import time
-                        time.sleep(delay)
-                        
-                except Exception as e:
-                    print(f"{Colors.FAIL}Lỗi tạo video {i}: {str(e)}{Colors.ENDC}")
-                    results.append({'prompt': prompt_item['content'], 'type': 'video', 'status': 'failed', 'error': str(e)})
-                    
-        elif workflow == 'video_from_existing_images':
-            # Workflow: Dùng ảnh có sẵn để tạo video
-            print(f"{Colors.BLUE}📋 Workflow: Dùng ảnh có sẵn tạo video{Colors.ENDC}")
-            available_images = batch_job['available_images']
-            
-            for i, prompt_item in enumerate(batch_job['video_prompts'], 1):
-                print(f"\n{Colors.BLUE}[Video {i}/{len(batch_job['video_prompts'])}] {prompt_item['content'][:50]}...{Colors.ENDC}")
-                
-                try:
-                    if i <= len(available_images):
-                        image_path = available_images[i-1]
-                        print(f"📸 Sử dụng ảnh: {os.path.basename(image_path)}")
-                        video_path = process_single_video_from_image(prompt_item, image_path, show_browser, batch_job['cookies'])
-                        if video_path:
-                            results.append({'prompt': prompt_item['content'], 'type': 'video', 'status': 'success', 'path': video_path, 'source_image': image_path})
-                        else:
-                            results.append({'prompt': prompt_item['content'], 'type': 'video', 'status': 'failed'})
-                    else:
-                        print(f"{Colors.WARNING}Không có ảnh tương ứng cho video prompt {i}{Colors.ENDC}")
-                        results.append({'prompt': prompt_item['content'], 'type': 'video', 'status': 'failed', 'error': 'No corresponding image'})
-                        
-                    # Delay
-                    if i < len(batch_job['video_prompts']):
-                        delay = batch_job['config']['delay_between_requests']
-                        print(f"{Colors.BLUE}Chờ {delay}s...{Colors.ENDC}")
-                        import time
-                        time.sleep(delay)
-                        
-                except Exception as e:
-                    print(f"{Colors.FAIL}Lỗi tạo video {i}: {str(e)}{Colors.ENDC}")
-                    results.append({'prompt': prompt_item['content'], 'type': 'video', 'status': 'failed', 'error': str(e)})
-                    
-        else:
-            # Workflow cũ: xử lý từng prompt một
-            for i, prompt_item in enumerate(batch_job['prompts'], 1):
-                print(f"\n{Colors.BLUE}[{i}/{batch_job['total_items']}] Đang xử lý prompt: {prompt_item['content'][:50]}...{Colors.ENDC}")
-                
-                try:
-                    result = {'prompt': prompt_item['content'], 'status': 'processing'}
-                    
-                    # Xử lý theo loại prompt
-                    if prompt_item.get('use_ai', False):
-                        # Sử dụng AI để sinh prompt chi tiết
-                        success = process_ai_prompt(prompt_item['content'], True, False, show_browser)
-                    else:
-                        # Sử dụng prompt trực tiếp
-                        temp_prompt_file = f"temp_prompt_{i}.json"
-                        with open(temp_prompt_file, 'w', encoding='utf-8') as f:
-                            json.dump({
-                                'image_prompt': prompt_item['content'],
-                                'video_prompt': prompt_item['content'],
-                                'video_duration': '5s',
-                                'video_ratio': '1:1'
-                            }, f, ensure_ascii=False, indent=2)
-                        
-                        success = process_file_prompt(temp_prompt_file, True, False, show_browser)
-                        
-                        # Xóa file tạm
-                        if os.path.exists(temp_prompt_file):
-                            os.remove(temp_prompt_file)
-                    
-                    result['status'] = 'success' if success else 'failed'
-                    results.append(result)
-                    
-                    # Delay giữa các request
-                    if i < batch_job['total_items']:
-                        delay = batch_job['config']['delay_between_requests']
-                        print(f"{Colors.BLUE}Chờ {delay}s trước khi xử lý tiếp...{Colors.ENDC}")
-                        import time
-                        time.sleep(delay)
-                        
-                except Exception as e:
-                    print(f"{Colors.FAIL}Lỗi xử lý prompt {i}: {str(e)}{Colors.ENDC}")
-                    results.append({'prompt': prompt_item['content'], 'status': 'failed', 'error': str(e)})
-        
-        # Lưu báo cáo
-        processor.save_batch_report(results, batch_job)
-        
-        # Tóm tắt kết quả
-        success_count = len([r for r in results if r['status'] == 'success'])
-        failed_count = len([r for r in results if r['status'] == 'failed'])
-        
-        print(f"\n{Colors.GREEN}{Colors.BOLD}✅ BATCH HOÀN THÀNH{Colors.ENDC}")
-        print(f"{Colors.GREEN}Thành công: {success_count}/{len(results)}{Colors.ENDC}")
-        print(f"{Colors.FAIL}Thất bại: {failed_count}/{len(results)}{Colors.ENDC}")
-        
-    except Exception as e:
-        print(f"{Colors.FAIL}Lỗi batch processing: {str(e)}{Colors.ENDC}")
-        if "--debug" in sys.argv:
-            traceback.print_exc()
+    prompts_dir = "prompts"
+    if not os.path.exists(prompts_dir) or not os.listdir(prompts_dir):
+        print(f"{Colors.FAIL}Lỗi: Thư mục '{prompts_dir}' không tồn tại hoặc rỗng.{Colors.ENDC}")
+        print(f"{Colors.WARNING}Sử dụng 'python main.py ai-batch' để tạo các file prompt trước.{Colors.ENDC}")
+        return
 
+    # Load cookie
+    cookies = load_cookie_from_template()
+    if not cookies:
+        print(f"{Colors.FAIL}Lỗi: Không thể load cookie. Dừng thực thi.{Colors.ENDC}")
+        return
+        
+    # Khởi tạo BatchProcessor
+    processor = BatchProcessor(
+        prompts_dir=prompts_dir,
+        show_browser=show_browser,
+        cookies=cookies
+    )
+    
+    # Lấy thông tin batch
+    batch_info = processor.get_batch_info()
+    
+    print(f"\n{Colors.HEADER}{Colors.BOLD}--- BATCH PROCESSING ---{Colors.ENDC}")
+    print(f"{Colors.BLUE}Tìm thấy {batch_info['total_files']} file prompt trong '{prompts_dir}'.{Colors.ENDC}")
+    
+    if not batch_info['total_files']:
+        return
+        
+    # Hiển thị danh sách file
+    for file_info in batch_info['files']:
+        status = f"{Colors.GREEN}✓{Colors.ENDC}" if file_info['exists'] else f"{Colors.FAIL}✗{Colors.ENDC}"
+        print(f"  [{status}] {file_info['filename']} - Topic: {file_info.get('topic', 'N/A')}")
+        
+    if dry_run:
+        print(f"\n{Colors.WARNING}--dry-run chế độ ON. Kết thúc mà không thực thi.{Colors.ENDC}")
+        return
+        
+    # Xác nhận thực thi
+    if not click.confirm(f"\n{Colors.WARNING}Bạn có muốn bắt đầu xử lý {batch_info['total_files']} file không?{Colors.ENDC}", default=True):
+        print("Đã hủy.")
+        return
+        
+    # Thực thi batch
+    processor.run_batch()
+    
+    print(f"\n{Colors.GREEN}{Colors.BOLD}--- HOÀN THÀNH BATCH ---{Colors.ENDC}")
 
 @cli.command()
 def setup():
-    """Thiết lập file .env và các thư mục cần thiết"""
-    # Tạo file .env nếu chưa tồn tại
-    env_file = os.path.join(os.getcwd(), ".env")
-    if not os.path.exists(env_file):
-        try:
-            with open(env_file, "w", encoding="utf-8") as f:
-                f.write("# Chứa API key của Gemini và Cookie Freepik\n")
-                f.write("GEMINI_API_KEY=your_gemini_api_key_here\n")
-                f.write("FREEPIK_COOKIE=your_freepik_cookie_here\n")
-                
-            print(f"{Colors.GREEN}Đã tạo file .env mẫu tại: {env_file}{Colors.ENDC}")
-            print(f"{Colors.GREEN}Vui lòng cập nhật API key và cookie trong file này.{Colors.ENDC}")
-        except Exception as e:
-            print(f"{Colors.FAIL}Lỗi khi tạo file .env: {str(e)}{Colors.ENDC}")
-    else:
-        print(f"{Colors.WARNING}File .env đã tồn tại tại: {env_file}{Colors.ENDC}")
-    
-    # Tạo thư mục output
-    output_dir = os.path.join(os.getcwd(), "output")
-    if not os.path.exists(output_dir):
-        try:
-            os.makedirs(output_dir)
-            print(f"{Colors.GREEN}Đã tạo thư mục output tại: {output_dir}{Colors.ENDC}")
-        except Exception as e:
-            print(f"{Colors.FAIL}Lỗi khi tạo thư mục output: {str(e)}{Colors.ENDC}")
-    else:
-        print(f"{Colors.WARNING}Thư mục output đã tồn tại tại: {output_dir}{Colors.ENDC}")
-    
-    print(f"\n{Colors.BLUE}{Colors.BOLD}Hướng dẫn sử dụng:{Colors.ENDC}")
-    print(f"{Colors.GREEN}1. Cập nhật file .env với API key của Gemini và cookie của Freepik Premium{Colors.ENDC}")
-    print(f"{Colors.GREEN}2. Sử dụng lệnh 'python main.py ai --topic \"chủ đề của bạn\"' để sinh nội dung bằng AI{Colors.ENDC}")
-    print(f"{Colors.GREEN}3. Hoặc, sử dụng lệnh 'python main.py file --file path/to/prompt.json' để sinh từ file sẵn có{Colors.ENDC}")
-    print(f"{Colors.GREEN}4. Kết quả sẽ được lưu trong thư mục output/{Colors.ENDC}")
-
+    """Hướng dẫn cài đặt và cấu hình môi trường."""
+    print(f"\n{Colors.HEADER}{Colors.BOLD}--- HƯỚNG DẪN CÀI ĐẶT FAZZYTOOL ---{Colors.ENDC}")
+    print(f"1. {Colors.BLUE}Cập nhật file .env với API key của Gemini và cookie của Freepik Premium{Colors.ENDC}")
+    print(f"2. {Colors.BLUE}Sử dụng lệnh 'python main.py ai --topic \"chủ đề của bạn\"' để sinh nội dung bằng AI{Colors.ENDC}")
+    print(f"3. {Colors.BLUE}Hoặc, sử dụng lệnh 'python main.py file --file path/to/prompt.json' để sinh từ file sẵn có{Colors.ENDC}")
+    print(f"4. {Colors.BLUE}Kết quả sẽ được lưu trong thư mục output/{Colors.ENDC}")
+    print(f"5. {Colors.BLUE}Chạy tool:{Colors.ENDC} python main.py --help")
 
 @cli.command()
 def test():
-    """Test các tính năng cơ bản của FazzyTool"""
-    print_banner()
-    print(f"{Colors.BLUE}🧪 Đang test các tính năng cơ bản...{Colors.ENDC}")
+    """
+    Chạy test nhanh để kiểm tra chức năng sinh ảnh/video.
+    Sử dụng prompt mẫu 'sample_prompts.json'.
+    """
+    if not validate_environment():
+        return
+
+    print(f"{Colors.BLUE}Bắt đầu chạy test...{Colors.ENDC}")
     
-    # Test 1: Kiểm tra file cấu hình
-    print(f"\n{Colors.BLUE}1. Kiểm tra file cấu hình:{Colors.ENDC}")
+    # Đường dẫn file test
+    test_file = "sample_prompts.json"
     
-    # Check .env
-    load_dotenv()
-    if os.path.exists('.env'):
-        print(f"  ✅ File .env: Tồn tại")
-        gemini_key = os.getenv('GEMINI_API_KEY')
-        freepik_cookie = os.getenv('FREEPIK_COOKIE')
-        print(f"  {'✅' if gemini_key else '❌'} GEMINI_API_KEY: {'Có' if gemini_key else 'Thiếu'}")
-        print(f"  {'✅' if freepik_cookie else '❌'} FREEPIK_COOKIE: {'Có' if freepik_cookie else 'Thiếu'}")
-    else:
-        print(f"  ❌ File .env: Không tồn tại")
-    
-    # Check cookie template
+    if not os.path.exists(test_file):
+        print(f"{Colors.FAIL}Lỗi: Không tìm thấy file test '{test_file}'.{Colors.ENDC}")
+        return
+        
+    # Đọc prompt từ file test
+    try:
+        with open(test_file, 'r', encoding='utf-8') as f:
+            prompt_data = json.load(f)
+    except Exception as e:
+        print(f"{Colors.FAIL}Lỗi khi đọc file test: {e}{Colors.ENDC}")
+        return
+        
+    # Load cookie
     cookies = load_cookie_from_template()
-    print(f"  {'✅' if cookies else '❌'} Cookie template: {'OK' if cookies else 'Lỗi'}")
-    
-    # Test 2: Kiểm tra thư mục
-    print(f"\n{Colors.BLUE}2. Kiểm tra thư mục:{Colors.ENDC}")
-    for folder in ['prompts', 'output']:
-        if os.path.exists(folder):
-            print(f"  ✅ Thư mục {folder}: Tồn tại")
-        else:
-            os.makedirs(folder, exist_ok=True)
-            print(f"  🔧 Thư mục {folder}: Đã tạo")
-    
-    # Test 3: Test manual prompt generation
-    print(f"\n{Colors.BLUE}3. Test tạo prompt thủ công:{Colors.ENDC}")
-    try:
-        test_prompt = create_manual_prompt("test mèo dễ thương")
-        if test_prompt:
-            print(f"  ✅ Tạo prompt thủ công: Thành công")
-            print(f"  📁 File: {test_prompt.get('file_path', 'N/A')}")
-        else:
-            print(f"  ❌ Tạo prompt thủ công: Thất bại")
-    except Exception as e:
-        print(f"  ❌ Lỗi: {e}")
-    
-    # Test 4: Kiểm tra imports
-    print(f"\n{Colors.BLUE}4. Kiểm tra modules:{Colors.ENDC}")
-    modules_to_check = [
-        ('selenium', 'Selenium WebDriver'),
-        ('requests', 'HTTP Requests'),
-        ('click', 'CLI Interface'),
-        ('json', 'JSON Processing'),
-        ('pathlib', 'Path Management')
-    ]
-    
-    for module_name, description in modules_to_check:
-        try:
-            __import__(module_name)
-            print(f"  ✅ {description}: OK")
-        except ImportError:
-            print(f"  ❌ {description}: Thiếu")
-    
-    print(f"\n{Colors.GREEN}🏁 Test hoàn thành!{Colors.ENDC}")
-    print(f"\n{Colors.BLUE}💡 Hướng dẫn sử dụng:{Colors.ENDC}")
-    print(f"  • Test với prompt có sẵn: python main.py file --file sample_prompts.json")
-    print(f"  • Tạo prompt từ AI: python main.py ai --topic 'mèo dễ thương'")
-    print(f"  • Xử lý batch: python main.py batch")
-    print(f"  • Xem help: python main.py --help")
-
-
-@cli.command()
-def sessions():
-    """Hiển thị thống kê các session video đã tạo"""
-    print(f"{Colors.BLUE}📊 THỐNG KÊ VIDEO SESSIONS{Colors.ENDC}")
-    
-    try:
-        from browser_video import FreepikVideoGenerator
+    if not cookies:
+        print(f"{Colors.FAIL}Không thể load cookie. Dừng test.{Colors.ENDC}")
+        return
         
-        # Tạo generator để access methods
-        generator = FreepikVideoGenerator()
-        generator.print_session_summary()
+    # --- Test Image Generation ---
+    print(f"\n{Colors.HEADER}--- Testing Image Generation ---{Colors.ENDC}")
+    image_prompt = prompt_data.get("image_prompt", "")
+    if image_prompt:
+        print(f"📝 Prompt ảnh: {image_prompt}")
         
-    except Exception as e:
-        print(f"{Colors.FAIL}❌ Lỗi khi lấy thống kê sessions: {e}{Colors.ENDC}")
+        # Tạo prompt item
+        image_prompt_item = {
+            'content': image_prompt,
+            'num_images': 4,
+            'download_count': 1,  # Chỉ tải 1 ảnh để test
+            'filename_prefix': 'test_image'
+        }
+        
+        # Chạy với browser hiển thị
+        downloaded_images = process_single_image_batch(image_prompt_item, True, cookies)
+        
+        if downloaded_images:
+            print(f"{Colors.GREEN}✅ Test ảnh THÀNH CÔNG. Đã tải {len(downloaded_images)} ảnh.{Colors.ENDC}")
+        else:
+            print(f"{Colors.FAIL}❌ Test ảnh THẤT BẠI.{Colors.ENDC}")
+    else:
+        print(f"{Colors.WARNING}Không tìm thấy image_prompt trong file test.{Colors.ENDC}")
 
+    print(f"\n{Colors.GREEN}{Colors.BOLD}--- KẾT THÚC TEST ---{Colors.ENDC}")
 
 @cli.command()
 @click.option('--prompt', '-p', default='test cookie với prompt debug', help='Prompt để test (mặc định: test cookie với prompt debug)')
-@click.option('--show-browser/--headless', default=True, help='Hiển thị trình duyệt để debug (mặc định: True)')
-def debug_cookie(prompt, show_browser):
-    """Test cookie và debug các vấn đề authentication"""
-    print(f"{Colors.BLUE}🔧 Chế độ debug cookie và authentication{Colors.ENDC}")
-    print(f"📝 Test prompt: {prompt}")
-    
-    try:
-        cookies = load_cookie_from_template()
-        if not cookies:
-            print(f"{Colors.FAIL}❌ Không thể load cookie từ cookie_template.txt{Colors.ENDC}")
-            return
-            
-        print(f"{Colors.GREEN}✅ Load được {len(cookies)} cookies{Colors.ENDC}")
-        
-        # Test với image generator
-        generator = FreepikImageGenerator(headless=not show_browser)
-        cookie_string = json.dumps(cookies)
-        
-        print(f"{Colors.BLUE}🎨 Testing image generation...{Colors.ENDC}")
-        
-        # Tạo prompt item debug
-        prompt_item = {
-            'content': prompt,
-            'num_images': 1,
-            'download_count': 1,
-            'filename_prefix': 'debug_test'
-        }
-        
-        result = process_single_image(prompt_item, show_browser, cookies)
-        
-        if result:
-            print(f"{Colors.GREEN}✅ Debug thành công! Ảnh: {result}{Colors.ENDC}")
-        else:
-            print(f"{Colors.FAIL}❌ Debug thất bại{Colors.ENDC}")
-            
-    except Exception as e:
-        print(f"{Colors.FAIL}❌ Lỗi debug: {e}{Colors.ENDC}")
-        import traceback
-        traceback.print_exc()
-
-
-@cli.command()
-@click.option('--prompt', '-p', default='A cute cat playing with a ball', help='Prompt để test video (mặc định: A cute cat playing with a ball)')
-@click.option('--duration', default='5s', type=click.Choice(['5s', '10s']), help='Thời lượng video (mặc định: 5s)')
-@click.option('--ratio', default='1:1', type=click.Choice(['1:1', '16:9', '9:16']), help='Tỉ lệ khung hình (mặc định: 1:1)')
-@click.option('--model', default='kling_master_2_1', type=click.Choice(['kling_2_1', 'kling_master_2_1']), help='Model AI để tạo video (mặc định: kling_master_2_1)')
-@click.option('--show-browser/--headless', default=True, help='Hiển thị trình duyệt để debug (mặc định: True)')
-def test_video(prompt, duration, ratio, model, show_browser):
-    """Test tạo video nhanh với prompt đơn giản"""
-    print(f"{Colors.BLUE}🎬 Test Video Generation{Colors.ENDC}")
-    print(f"📝 Prompt: {prompt}")
-    print(f"⏱️ Duration: {duration}")
-    print(f"📐 Ratio: {ratio}")
-    print(f"🤖 Model: {model}")
-    
-    try:
-        # Load cookies
-        cookies = load_cookie_from_template()
-        if not cookies:
-            print(f"{Colors.FAIL}❌ Không thể load cookie từ cookie_template.txt{Colors.ENDC}")
-            sys.exit(1)
-            
-        print(f"{Colors.GREEN}✅ Load được {len(cookies)} cookies{Colors.ENDC}")
-        
-        # Tạo video generator
-        output_dir = create_output_dir()
-        video_generator = FreepikVideoGenerator(headless=not show_browser, output_dir=output_dir)
-        
-        cookie_string = json.dumps(cookies)
-        
-        print(f"{Colors.BLUE}🚀 Bắt đầu test tạo video...{Colors.ENDC}")
-        
-        # Text-to-Video
-        video_path = video_generator.generate_video(
-            prompt=prompt,
-            cookie_string=cookie_string,
-            duration=duration,
-            ratio=ratio,
-            model=model
-        )
-        
-        if video_path:
-            print(f"\n{Colors.GREEN}{Colors.BOLD}🎉 TEST THÀNH CÔNG!{Colors.ENDC}")
-            print(f"{Colors.GREEN}📹 Video đã được tạo: {video_path}{Colors.ENDC}")
-            
-            # Hiển thị thông tin session
-            session_dir = os.path.dirname(video_path)
-            print(f"📁 Session folder: {session_dir}")
-            
-        else:
-            print(f"{Colors.FAIL}❌ TEST THẤT BẠI!{Colors.ENDC}")
-            sys.exit(1)
-            
-    except Exception as e:
-        print(f"{Colors.FAIL}❌ Lỗi test video: {e}{Colors.ENDC}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
-
-
-# ========================================================================================
-# COMMANDS RIÊNG BIỆT CHO TẠO ẢNH VÀ VIDEO
-# ========================================================================================
-
-@cli.command()
-@click.option('--file', '-f', type=str, help='Đường dẫn tới file prompt (.txt, .json, .docx)')
-@click.option('--topic', '-t', type=str, help='Chủ đề để sinh prompt bằng AI (tiếng Việt)')
-@click.option('--prompt', '-p', type=str, help='Prompt trực tiếp (tiếng Anh)')
-@click.option('--num-images', default=4, help='Số lượng ảnh sinh ra (mặc định: 4)')
+@click.option('--show-browser/--headless', default=False, help='Hiển thị trình duyệt (mặc định: False)')
 @click.option('--download-count', default=None, type=int, help='Số lượng ảnh tải về (mặc định: tất cả)')
 @click.option('--filename-prefix', type=str, help='Tiền tố tên file ảnh')
-@click.option('--show-browser/--headless', default=False, help='Hiển thị trình duyệt (mặc định: False)')
 def image(file, topic, prompt, num_images, download_count, filename_prefix, show_browser):
-    """CHỈ TẠO ẢNH - Sinh ảnh từ prompt, file hoặc AI"""
-    print(f"{Colors.GREEN}{Colors.BOLD}🎨 CHẾ ĐỘ TẠO ẢNH{Colors.ENDC}")
-    
-    # Kiểm tra input
-    input_count = sum([bool(file), bool(topic), bool(prompt)])
-    if input_count == 0:
-        print(f"{Colors.FAIL}❌ Vui lòng cung cấp một trong các tùy chọn:{Colors.ENDC}")
-        print(f"   --file: Đường dẫn file prompt")
-        print(f"   --topic: Chủ đề tiếng Việt (dùng AI)")
-        print(f"   --prompt: Prompt trực tiếp tiếng Anh")
-        sys.exit(1)
-        
-    if input_count > 1:
-        print(f"{Colors.FAIL}❌ Chỉ được chọn một tùy chọn input duy nhất{Colors.ENDC}")
-        sys.exit(1)
-    
-    try:
-        cookies = load_cookie_from_template()
-        if not cookies:
-            print(f"{Colors.FAIL}❌ Không thể load cookie. Vui lòng cập nhật cookie_template.txt{Colors.ENDC}")
-            sys.exit(1)
-        
-        # Chuẩn bị prompt data
-        prompt_item = {
-            'num_images': num_images,
-            'download_count': download_count if download_count is not None else num_images,
-            'filename_prefix': filename_prefix
-        }
-        
-        if file:
-            # Từ file
-            print(f"{Colors.BLUE}📁 Đang đọc prompt từ file: {file}{Colors.ENDC}")
-            if not os.path.exists(file):
-                print(f"{Colors.FAIL}❌ Không tìm thấy file: {file}{Colors.ENDC}")
-                sys.exit(1)
-                
-            loader = PromptLoader()
-            file_data = loader.load_prompt(file)
-            prompt_item['content'] = file_data.get('image_prompt', file_data.get('prompt', ''))
-            
-        elif topic:
-            # Từ AI
-            print(f"{Colors.BLUE}🤖 Đang sinh prompt AI từ chủ đề: {topic}{Colors.ENDC}")
-            
-            try:
-                gemini_generator = GeminiPromptGenerator()
-                ai_result = gemini_generator.generate_prompt(topic, save_to_file=True)
-                prompt_item['content'] = ai_result['image_prompt']
-                print(f"{Colors.GREEN}✅ Đã sinh prompt AI thành công!{Colors.ENDC}")
-                print(f"📁 File prompt: {ai_result.get('file_path', 'N/A')}")
-                print(f"🎨 Image prompt: {ai_result['image_prompt'][:100]}...")
-            except Exception as e:
-                print(f"{Colors.FAIL}❌ Lỗi sinh prompt AI: {e}{Colors.ENDC}")
-                print(f"{Colors.WARNING}🔧 Đang chuyển sang chế độ tạo prompt thủ công...{Colors.ENDC}")
-                
-                manual_prompt = create_manual_prompt(topic)
-                if manual_prompt:
-                    prompt_item['content'] = manual_prompt['image_prompt']
-                else:
-                    print(f"{Colors.FAIL}❌ Không thể tạo prompt thủ công{Colors.ENDC}")
-                    sys.exit(1)
-                    
-        else:
-            # Prompt trực tiếp
-            print(f"{Colors.BLUE}✍️ Sử dụng prompt trực tiếp{Colors.ENDC}")
-            prompt_item['content'] = prompt
-        
-        if not prompt_item['content']:
-            print(f"{Colors.FAIL}❌ Prompt rỗng{Colors.ENDC}")
-            sys.exit(1)
-        
-        # Tạo ảnh
-        print(f"{Colors.GREEN}🎨 Bắt đầu sinh ảnh...{Colors.ENDC}")
-        print(f"🎨 Sinh {num_images} ảnh, tải về {prompt_item['download_count']} ảnh")
-        print(f"📝 Prompt: {prompt_item['content'][:100]}...")
-        
-        downloaded_files = process_single_image_batch(prompt_item, show_browser, cookies)
-        
-        if downloaded_files:
-            print(f"{Colors.GREEN}{Colors.BOLD}✅ TẠO ẢNH THÀNH CÔNG!{Colors.ENDC}")
-            print(f"{Colors.GREEN}📸 Đã tải về {len(downloaded_files)} ảnh:{Colors.ENDC}")
-            for i, file_path in enumerate(downloaded_files, 1):
-                print(f"   {i}. {os.path.basename(file_path)}")
-            print(f"{Colors.BLUE}📁 Vị trí: thư mục output/{Colors.ENDC}")
-        else:
-            print(f"{Colors.FAIL}❌ Thất bại sinh ảnh{Colors.ENDC}")
-            sys.exit(1)
-            
-    except Exception as e:
-        print(f"{Colors.FAIL}❌ Lỗi: {str(e)}{Colors.ENDC}")
-        sys.exit(1)
-
-
-@cli.command()
-@click.option('--file', '-f', type=str, help='Đường dẫn tới file prompt (.txt, .json, .docx)')
-@click.option('--topic', '-t', type=str, help='Chủ đề để sinh prompt bằng AI (tiếng Việt)')
-@click.option('--prompt', '-p', type=str, help='Prompt trực tiếp (tiếng Anh)')
-@click.option('--image', '-i', type=str, help='Đường dẫn ảnh để tạo video (image-to-video)')
-@click.option('--duration', default='5s', type=click.Choice(['5s', '10s']), help='Thời lượng video (mặc định: 5s)')
-@click.option('--ratio', default='16:9', type=click.Choice(['1:1', '16:9', '9:16']), help='Tỉ lệ khung hình (mặc định: 16:9)')
-@click.option('--model', default='kling_master_2_1', type=click.Choice(['kling_2_1', 'kling_master_2_1']), help='Model AI để tạo video (mặc định: kling_master_2_1)')
-@click.option('--show-browser/--headless', default=False, help='Hiển thị trình duyệt (mặc định: False)')
-def video(file, topic, prompt, image, duration, ratio, model, show_browser):
-    """Tạo video AI từ prompt hoặc ảnh (Text-to-Video hoặc Image-to-Video)"""
-    
+    """
+    Sinh ảnh từ nhiều nguồn: file, topic (AI), hoặc prompt trực tiếp.
+    Đây là lệnh chính để tạo ảnh.
+    """
     if not validate_environment():
-        sys.exit(1)
+        return
+        
+    # Xác định nguồn prompt
+    prompt_source_count = sum([1 for var in [file, topic, prompt] if var])
+    if prompt_source_count > 1:
+        print(f"{Colors.FAIL}Lỗi: Chỉ được chọn một nguồn prompt (--file, --topic, hoặc --prompt).{Colors.ENDC}")
+        return
+    if prompt_source_count == 0:
+        print(f"{Colors.FAIL}Lỗi: Phải cung cấp một nguồn prompt (--file, --topic, hoặc --prompt).{Colors.ENDC}")
+        return
+
+    # Load cookie
+    cookies = load_cookie_from_template()
+    if not cookies:
+        print(f"{Colors.FAIL}Lỗi: Không thể load cookie.{Colors.ENDC}")
+        return
+
+    final_prompt = ""
     
-    # Xác định prompt để sử dụng
-    video_prompt = None
-    
-    if prompt:
-        # Sử dụng prompt trực tiếp
-        video_prompt = prompt
-        print(f"{Colors.GREEN}📝 Sử dụng prompt trực tiếp: {prompt}{Colors.ENDC}")
-        
-    elif topic:
-        # Sinh prompt từ chủ đề
-        print(f"{Colors.BLUE}🔮 Sinh prompt AI từ chủ đề: {topic}{Colors.ENDC}")
-        
-        try:
-            load_dotenv()
-            gemini_api_key = os.getenv("GEMINI_API_KEY")
-            if not gemini_api_key:
-                print(f"{Colors.WARNING}⚠️ Gemini API key không có, sử dụng prompt thủ công...{Colors.ENDC}")
-                manual_prompt = create_manual_prompt(topic)
-                if manual_prompt:
-                    video_prompt = manual_prompt['video_prompt']
-                else:
-                    print(f"{Colors.FAIL}❌ Không thể tạo prompt cho topic: {topic}{Colors.ENDC}")
-                    sys.exit(1)
-            else:
-                gemini_generator = GeminiPromptGenerator(output_dir="prompts")
-                prompt_data = gemini_generator.generate_prompt(topic, save_to_file=True)
-                if prompt_data:
-                    video_prompt = prompt_data['video_prompt']
-                    print(f"{Colors.GREEN}✅ Đã sinh prompt AI: {video_prompt[:100]}...{Colors.ENDC}")
-                else:
-                    print(f"{Colors.FAIL}❌ Không thể sinh prompt từ AI{Colors.ENDC}")
-                    sys.exit(1)
-                    
-        except Exception as e:
-            print(f"{Colors.WARNING}⚠️ Lỗi Gemini API: {e}{Colors.ENDC}")
-            print(f"{Colors.BLUE}🔄 Fallback sang prompt thủ công...{Colors.ENDC}")
-            manual_prompt = create_manual_prompt(topic)
-            if manual_prompt:
-                video_prompt = manual_prompt['video_prompt']
-            else:
-                print(f"{Colors.FAIL}❌ Không thể tạo prompt{Colors.ENDC}")
-                sys.exit(1)
-        
-    elif file:
-        # Đọc prompt từ file
-        print(f"{Colors.BLUE}📂 Đọc prompt từ file: {file}{Colors.ENDC}")
-        
-        if not os.path.exists(file):
-            print(f"{Colors.FAIL}❌ File không tồn tại: {file}{Colors.ENDC}")
-            sys.exit(1)
-            
+    # Xử lý prompt từ file
+    if file:
         try:
             prompt_data = PromptLoader.load_prompt(file)
-            video_prompt = prompt_data.get("video_prompt", "")
-            if not video_prompt:
-                print(f"{Colors.FAIL}❌ Không tìm thấy video_prompt trong file{Colors.ENDC}")
-                sys.exit(1)
-            print(f"{Colors.GREEN}✅ Đã đọc prompt: {video_prompt[:100]}...{Colors.ENDC}")
+            final_prompt = prompt_data.get("image_prompt", "")
+            if not filename_prefix:
+                filename_prefix = Path(file).stem
         except Exception as e:
-            print(f"{Colors.FAIL}❌ Lỗi đọc file: {e}{Colors.ENDC}")
-            sys.exit(1)
+            print(f"{Colors.FAIL}Lỗi khi xử lý file prompt: {e}{Colors.ENDC}")
+            return
+            
+    # Xử lý prompt từ topic (AI)
+    elif topic:
+        try:
+            print(f"{Colors.BLUE}Đang sinh prompt từ topic: '{topic}'...{Colors.ENDC}")
+            gemini_generator = GeminiPromptGenerator()
+            prompt_data = gemini_generator.generate_prompt(topic, save_to_file=False)
+            if prompt_data:
+                final_prompt = prompt_data.get("image_prompt", "")
+                if not filename_prefix:
+                    safe_topic = "".join(c for c in topic if c.isalnum() or c in (' ', '-', '_')).strip().replace(' ', '_')
+                    filename_prefix = f"ai_{safe_topic[:20]}"
+            else:
+                raise Exception("Gemini không trả về prompt.")
+        except Exception as e:
+            print(f"{Colors.FAIL}Lỗi khi sinh prompt bằng AI: {e}{Colors.ENDC}")
+            return
+    
+    # Xử lý prompt trực tiếp
+    elif prompt:
+        final_prompt = prompt
+        if not filename_prefix:
+            filename_prefix = "".join(c for c in prompt[:20] if c.isalnum() or c in (' ', '-', '_')).strip().replace(' ', '_')
+
+    # Kiểm tra lại prompt cuối cùng
+    if not final_prompt:
+        print(f"{Colors.FAIL}Lỗi: Không có prompt nào để xử lý.{Colors.ENDC}")
+        return
+        
+    print(f"\n{Colors.HEADER}--- BẮT ĐẦU SINH ẢNH ---{Colors.ENDC}")
+    print(f"📝 Prompt: {Colors.BOLD}{final_prompt}{Colors.ENDC}")
+    print(f"⚙️  Cấu hình: Sinh {num_images} ảnh, tải về {download_count or 'tất cả'}")
+    
+    # Tạo prompt item
+    prompt_item = {
+        'content': final_prompt,
+        'num_images': num_images,
+        'download_count': download_count,
+        'filename_prefix': filename_prefix or 'image'
+    }
+    
+    # Xử lý
+    downloaded_files = process_single_image_batch(prompt_item, show_browser, cookies)
+    
+    if downloaded_files:
+        print(f"\n{Colors.GREEN}✅ HOÀN THÀNH! Đã tải {len(downloaded_files)} ảnh:{Colors.ENDC}")
+        for f in downloaded_files:
+            print(f"  - {f}")
     else:
-        print(f"{Colors.FAIL}❌ Vui lòng cung cấp một trong các tùy chọn: --prompt, --topic, hoặc --file{Colors.ENDC}")
-        print("Ví dụ:")
-        print("  python main.py video --prompt 'A cat playing with a ball'")
-        print("  python main.py video --topic 'Mèo dễ thương'") 
-        print("  python main.py video --file sample_prompts.json")
-        print("  python main.py video --prompt 'Dancing' --image cat.jpg")
-        sys.exit(1)
-    
-    try:
-        # Load cookies
-        cookies = load_cookie_from_template()
-        cookie_string = json.dumps(cookies) if cookies else None
-        
-        # Tạo video generator
-        output_dir = create_output_dir()
-        video_generator = FreepikVideoGenerator(headless=not show_browser, output_dir=output_dir)
-        
-        print(f"\n{Colors.BLUE}🎬 Bắt đầu tạo video...{Colors.ENDC}")
-        print(f"📝 Prompt: {video_prompt}")
-        print(f"⏱️ Duration: {duration}")
-        print(f"📐 Ratio: {ratio}")
-        print(f"🤖 Model: {model}")
-        if image:
-            print(f"🖼️ Từ ảnh: {image}")
-        
-        # Chọn phương thức tạo video
-        if image:
-            # Image-to-Video
-            if not os.path.exists(image):
-                print(f"{Colors.FAIL}❌ File ảnh không tồn tại: {image}{Colors.ENDC}")
-                sys.exit(1)
-                
-            video_path = video_generator.generate_video_from_image(
-                image_path=image,
-                prompt=video_prompt,
-                cookie_string=cookie_string,
-                duration=duration,
-                ratio=ratio,
-                model=model
-            )
-        else:
-            # Text-to-Video
-            video_path = video_generator.generate_video(
-                prompt=video_prompt,
-                cookie_string=cookie_string,
-                duration=duration,
-                ratio=ratio,
-                model=model
-            )
-        
-        if video_path:
-            print(f"\n{Colors.GREEN}{Colors.BOLD}✅ THÀNH CÔNG!{Colors.ENDC}")
-            print(f"{Colors.GREEN}📹 Video đã được tạo: {video_path}{Colors.ENDC}")
-            
-            # Hiển thị thông tin session
-            session_dir = os.path.dirname(video_path)
-            print(f"📁 Session folder: {session_dir}")
-            
-            # Hiển thị các file trong session
-            try:
-                files = os.listdir(session_dir)
-                print(f"📂 Files trong session:")
-                for f in files:
-                    print(f"  - {f}")
-            except:
-                pass
-                
-        else:
-            print(f"{Colors.FAIL}❌ Thất bại tạo video{Colors.ENDC}")
-            sys.exit(1)
-            
-    except Exception as e:
-        print(f"{Colors.FAIL}❌ Lỗi tạo video: {e}{Colors.ENDC}")
-        if "--debug" in sys.argv:
-            traceback.print_exc()
-        sys.exit(1)
-
-
-@cli.command()
-@click.option('--images-dir', type=str, default='output', help='Thư mục chứa ảnh để tạo video (mặc định: output)')
-@click.option('--prompts-file', type=str, help='File chứa prompts cho video (mỗi dòng một prompt)')
-@click.option('--duration', default='5s', type=click.Choice(['5s', '10s']), help='Thời lượng video (mặc định: 5s)')
-@click.option('--ratio', default='16:9', type=click.Choice(['1:1', '16:9', '9:16']), help='Tỉ lệ khung hình (mặc định: 16:9)')
-@click.option('--show-browser/--headless', default=False, help='Hiển thị trình duyệt (mặc định: False)')
-def images_to_videos(images_dir, prompts_file, duration, ratio, show_browser):
-    """TẠO VIDEO TỪ NHIỀU ẢNH - Chuyển đổi hàng loạt ảnh thành video"""
-    print(f"{Colors.GREEN}{Colors.BOLD}🎬 CHẾ ĐỘ TẠO VIDEO TỪ ẢNH{Colors.ENDC}")
-    
-    try:
-        # Kiểm tra thư mục ảnh
-        if not os.path.exists(images_dir):
-            print(f"{Colors.FAIL}❌ Không tìm thấy thư mục ảnh: {images_dir}{Colors.ENDC}")
-            sys.exit(1)
-        
-        # Tìm tất cả ảnh
-        image_extensions = ['.png', '.jpg', '.jpeg', '.webp']
-        image_files = []
-        for ext in image_extensions:
-            image_files.extend(Path(images_dir).glob(f'*{ext}'))
-            image_files.extend(Path(images_dir).glob(f'*{ext.upper()}'))
-        
-        if not image_files:
-            print(f"{Colors.FAIL}❌ Không tìm thấy ảnh nào trong thư mục: {images_dir}{Colors.ENDC}")
-            sys.exit(1)
-        
-        print(f"{Colors.BLUE}📸 Tìm thấy {len(image_files)} ảnh{Colors.ENDC}")
-        
-        # Load prompts nếu có
-        prompts = []
-        if prompts_file and os.path.exists(prompts_file):
-            print(f"{Colors.BLUE}📝 Đang đọc prompts từ: {prompts_file}{Colors.ENDC}")
-            with open(prompts_file, 'r', encoding='utf-8') as f:
-                prompts = [line.strip() for line in f if line.strip()]
-        
-        # Load cookies
-        cookies = load_cookie_from_template()
-        if not cookies:
-            print(f"{Colors.FAIL}❌ Không thể load cookie. Vui lòng cập nhật cookie_template.txt{Colors.ENDC}")
-            sys.exit(1)
-        
-        # Xử lý từng ảnh
-        successful_videos = []
-        failed_videos = []
-        
-        for i, image_path in enumerate(image_files, 1):
-            print(f"{Colors.BLUE}\n[{i}/{len(image_files)}] Đang tạo video từ: {image_path.name}{Colors.ENDC}")
-            
-            try:
-                # Chuẩn bị prompt
-                prompt_item = {
-                    'duration': duration,
-                    'ratio': ratio
-                }
-                
-                if i <= len(prompts):
-                    prompt_item['content'] = prompts[i-1]
-                    print(f"📝 Prompt: {prompts[i-1][:50]}...")
-                else:
-                    prompt_item['content'] = f'Video animation from image: {image_path.stem}'
-                    print(f"📝 Prompt tự động: {prompt_item['content']}")
-                
-                # Tạo video
-                video_path = process_single_video_from_image(prompt_item, str(image_path), show_browser, cookies)
-                
-                if video_path:
-                    successful_videos.append(video_path)
-                    print(f"{Colors.GREEN}✅ Thành công: {os.path.basename(video_path)}{Colors.ENDC}")
-                else:
-                    failed_videos.append(str(image_path))
-                    print(f"{Colors.FAIL}❌ Thất bại: {image_path.name}{Colors.ENDC}")
-                
-                # Delay giữa các request
-                if i < len(image_files):
-                    print(f"{Colors.BLUE}Chờ 5s...{Colors.ENDC}")
-                    import time
-                    time.sleep(5)
-                    
-            except Exception as e:
-                failed_videos.append(str(image_path))
-                print(f"{Colors.FAIL}❌ Lỗi tạo video từ {image_path.name}: {str(e)}{Colors.ENDC}")
-        
-        # Tóm tắt kết quả
-        print(f"{Colors.GREEN}{Colors.BOLD}\n🏁 HOÀN THÀNH TẠO VIDEO TỪ ẢNH{Colors.ENDC}")
-        print(f"{Colors.GREEN}✅ Thành công: {len(successful_videos)}/{len(image_files)}{Colors.ENDC}")
-        print(f"{Colors.FAIL}❌ Thất bại: {len(failed_videos)}/{len(image_files)}{Colors.ENDC}")
-        
-        if successful_videos:
-            print(f"{Colors.BLUE}\n📹 Video đã tạo:{Colors.ENDC}")
-            for video in successful_videos:
-                print(f"   {os.path.basename(video)}")
-        
-        if failed_videos:
-            print(f"{Colors.FAIL}\n💥 Ảnh tạo video thất bại:{Colors.ENDC}")
-            for img in failed_videos:
-                print(f"   {os.path.basename(img)}")
-                
-    except Exception as e:
-        print(f"{Colors.FAIL}❌ Lỗi: {str(e)}{Colors.ENDC}")
-        sys.exit(1)
+        print(f"\n{Colors.FAIL}❌ THẤT BẠI! Không có ảnh nào được tạo.{Colors.ENDC}")
 
 
 if __name__ == "__main__":
-    cli() 
+    try:
+        # Check môi trường trước khi chạy CLI
+        # if validate_environment():
+        print_banner()
+        cli()
+    except Exception as e:
+        print(f"\n{Colors.FAIL}{Colors.BOLD}Lỗi không xác định:{Colors.ENDC}")
+        print(f"Một lỗi nghiêm trọng đã xảy ra: {e}")
+        print("\n--- TRACEBACK ---")
+        traceback.print_exc()
+        sys.exit(1) 

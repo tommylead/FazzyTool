@@ -117,7 +117,7 @@ class FreepikImageGenerator:
 
     def _setup_browser(self) -> None:
         """Thiết lập browser và context"""
-        # Setup trong method generate_image
+        # Sẽ được setup trong method generate_image
         pass
 
     def _close_browser(self) -> None:
@@ -614,57 +614,42 @@ class FreepikImageGenerator:
         downloaded_files = []
         
         with sync_playwright() as p:
-            # Đọc cấu hình browser từ config (mặc định Chrome để tránh lỗi)
-            browser_type = "chrome"
-            config_show_browser = False
-            
+            # Khởi tạo browser như ban đầu
             try:
-                if os.path.exists('config_template.txt'):
-                    with open('config_template.txt', 'r', encoding='utf-8') as f:
-                        content = f.read()
-                    if False:  # DISABLED - ALWAYS USE CHROME instead of Firefox
-                        browser_type = "firefox"
-                    elif 'browser=chrome' in content:
-                        browser_type = "chrome"
-                    
-                    # Đọc show_browser setting
-                    if 'show_browser=true' in content:
-                        config_show_browser = True
-                        print("⚙️ Config: show_browser=true - sử dụng visible mode")
-            except:
-                pass
-            
-            # Ưu tiên config setting nếu không có parameter explicit
-            final_headless = self.headless and not config_show_browser
-            
-            print(f"🌐 Sử dụng browser: {browser_type}")
-            print(f"👁️ Chế độ: {'Visible' if not final_headless else 'Headless'}")
-            
-            # Khởi động trình duyệt tùy theo cấu hình
-            if browser_type == "chrome":
                 browser = p.chromium.launch(
-                    headless=final_headless,
+                    headless=self.headless,
+                    channel="chrome",
                     args=[
                         "--disable-blink-features=AutomationControlled",
                         "--disable-extensions",
                         "--no-sandbox",
                         "--disable-dev-shm-usage",
                         "--disable-gpu",
-                        "--window-size=1920,1080"
+                        "--window-size=1920,1080",
+                        "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                     ]
                 )
-            else:  # firefox
-                browser = p.firefox.launch(
-                    headless=final_headless,
-                    args=["--no-sandbox", "--disable-dev-shm-usage"]
+                print("✅ Đã khởi động Chrome thành công")
+            except Exception as e:
+                print(f"⚠️ Chrome failed: {e}, fallback to Chromium...")
+                browser = p.chromium.launch(
+                    headless=self.headless,
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--disable-extensions",
+                        "--no-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-gpu",
+                        "--window-size=1920,1080",
+                        "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    ]
                 )
+
             context = browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/109.0",
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                 viewport={"width": 1920, "height": 1080},
                 ignore_https_errors=True
             )
-            
-            # Thiết lập timeout mặc định
             context.set_default_timeout(30000)
             
             page = context.new_page()
@@ -1168,24 +1153,56 @@ class FreepikImageGenerator:
                 
                 print(f"✅ Đã nhập prompt thành công")
                 
+                # Thêm chờ lâu hơn sau khi nhập prompt thành công
+                print("⏳ Chờ 5 giây trước khi tiếp tục...")
+                time.sleep(5)
+                
                 # TRỰC TIẾP TÌM VÀ CLICK NÚT GENERATE (theo yêu cầu user)
                 print("🎯 Nhấn trực tiếp vào nút Generate...")
                 
-                # Selector đúng từ user (không sử dụng gì khác)
-                selector = "button[data-cy='generate-button'][data-tour='generate-button']"
+                generate_selectors = [
+                    # Primary selector provided by user
+                    "button[data-cy='generate-button'][data-tour='generate-button']",
+                    # More robust selectors
+                    "button:has-text('Generate')",
+                    "button:has-text('Create')",
+                    "button[type='submit']",
+                    "button.generate-button",
+                    "[data-testid*='generate']",
+                    "button[aria-label*='Generate']"
+                ]
+
+                click_success = False
+                for selector in generate_selectors:
+                    try:
+                        print(f"  🔍 Thử tìm nút Generate với selector: {selector}")
+                        generate_button = page.query_selector(selector)
+
+                        if generate_button and generate_button.is_visible():
+                            print("    ✅ Nút Generate được tìm thấy và hiển thị.")
+                            if generate_button.is_enabled():
+                                print("    ✅ Nút Generate đã được bật.")
+                                # Use a more robust click method
+                                generate_button.click(timeout=5000)
+                                click_success = True
+                                print(f"✅ ĐÃ CLICK nút Generate với selector: {selector}")
+                                break # Exit loop on success
+                            else:
+                                print("    ⚠️ Nút Generate bị vô hiệu hóa (disabled).")
+                        else:
+                            print(f"    ❌ Không tìm thấy hoặc nút không hiển thị với selector: {selector}")
+
+                    except Exception as e:
+                        print(f"    ❌ Lỗi khi thử selector '{selector}': {e}")
+                        continue
                 
-                try:
-                    generate_button = page.query_selector(selector)
-                    if generate_button and generate_button.is_visible():
-                        generate_button.click()
-                        print("✅ Đã click nút Generate")
-                    else:
-                        # Fallback đơn giản
-                        page.click("button:has-text('Generate')")
-                        print("✅ Đã click nút Generate (fallback)")
-                except Exception as e:
-                    print(f"❌ Lỗi click Generate: {e}")
-                    raise Exception("Không thể click nút Generate")
+                if not click_success:
+                    page.screenshot(path=os.path.join(self.output_dir, "debug_generate_click_failed.png"))
+                    raise Exception("Không thể click nút Generate với bất kỳ selector nào. Kiểm tra file debug_generate_click_failed.png")
+                
+                # Thêm chờ lâu hơn sau khi click nút Generate
+                print("⏳ Chờ 10 giây sau khi click nút Generate...")
+                time.sleep(10)
                 
                 # Chờ ảnh được sinh ra
                 print("⏳ Đang chờ ảnh được sinh ra...")
@@ -1308,20 +1325,20 @@ class FreepikImageGenerator:
                     
                     # Scroll lên top để reset vị trí trang, tránh click nhầm
                     page.evaluate("window.scrollTo(0, 0)")
-                    time.sleep(1)
+                    time.sleep(2)  # Tăng thời gian chờ từ 1s lên 2s
                     
                     # Scroll đến vùng kết quả để thấy ảnh cần tải
                     page.evaluate("window.scrollTo(0, document.body.scrollHeight * 0.6)")
-                    time.sleep(1)
+                    time.sleep(2)  # Tăng thời gian chờ từ 1s lên 2s
                     
                     # Thử tải với retry logic
-                    max_retries = 3
+                    max_retries = 5  # Tăng số lần thử từ 3 lên 5
                     filepath = None
                     
                     for retry in range(max_retries):
                         if retry > 0:
                             print(f"🔄 Thử lại lần {retry + 1}/{max_retries}...")
-                            time.sleep(3)  # Chờ lâu hơn khi retry
+                            time.sleep(5)  # Tăng thời gian chờ khi retry từ 3s lên 5s
                     
                         filepath = self._download_single_image(
                             image_index=i, 
@@ -1346,8 +1363,8 @@ class FreepikImageGenerator:
                     
                     # Delay dài hơn giữa các lần tải để tránh xung đột
                     if i < actual_download_count - 1:
-                        print(f"⏳ Chờ {3} giây trước khi tải ảnh tiếp theo...")
-                        time.sleep(3)
+                        print(f"⏳ Chờ 5 giây trước khi tải ảnh tiếp theo...") # Tăng từ 3s lên 5s
+                        time.sleep(5)
                 
                 self.generation_stats["total_generated"] += len(downloaded_files)
                 
@@ -1366,4 +1383,5 @@ class FreepikImageGenerator:
                 return downloaded_files
                 
             finally:
+                # Đóng browser sau khi hoàn thành
                 browser.close() 

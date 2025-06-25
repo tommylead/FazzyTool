@@ -76,9 +76,21 @@
                     </div>
                     
                     <div class="mb-3">
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <strong>Lưu ý:</strong> Trình duyệt sẽ luôn hiển thị để đảm bảo hoạt động ổn định với Freepik.
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>⚠️ LƯU Ý QUAN TRỌNG:</strong><br>
+                            • Chỉ click "Tạo ảnh" <strong>MỘT LẦN</strong><br>
+                            • Chrome sẽ tự động mở để xử lý ảnh<br>
+                            • <strong>KHÔNG click nhiều lần</strong> để tránh mở nhiều browser<br>
+                            • Chờ hoàn thành trước khi thực hiện thao tác mới
+                        </div>
+                        
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            <strong>❗ LỖI THƯỜNG GẶP:</strong><br>
+                            • Nếu Chrome mở lên rồi tự động đóng: <strong>Cookie của bạn đã hết hạn hoặc không hợp lệ</strong><br>
+                            • Cập nhật cookie mới trong phần Cài đặt hoặc file cookie_template.txt<br>
+                            • Đảm bảo đã đăng nhập Freepik và có đủ credit để tạo ảnh
                         </div>
                     </div>
                     
@@ -185,6 +197,8 @@
 <script>
     let currentTaskId = null;
     let statusCheckInterval = null;
+    let lastClickTime = 0;
+    const DEBOUNCE_TIME = 2000; // 2 giây debounce
     
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('imageForm');
@@ -220,6 +234,32 @@
     });
     
     function generateImage() {
+        const generateBtn = document.getElementById('generateBtn');
+        const now = Date.now();
+        
+        // Debounce check - ngăn click quá nhanh
+        if (now - lastClickTime < DEBOUNCE_TIME) {
+            console.log('⚠️ Click quá nhanh, bỏ qua');
+            alert('⚠️ CLICK QUÁ NHANH!\n\nVui lòng chờ ít nhất 2 giây giữa các lần click.');
+            return;
+        }
+        lastClickTime = now;
+        
+        // NGAY LẬP TỨC disable button để ngăn double-click
+        generateBtn.disabled = true;
+        generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang khởi tạo...';
+        
+        // Ngăn multiple clicks
+        if (currentTaskId) {
+            alert('⚠️ ĐÃ CÓ TASK ĐANG CHẠY!\n\n' +
+                  '• Chỉ được tạo ảnh 1 lần trong 1 thời điểm\n' +
+                  '• Chrome đang xử lý task hiện tại\n' +
+                  '• Vui lòng chờ hoàn thành trước khi thực hiện mới\n\n' +
+                  'Task ID: ' + currentTaskId);
+            resetForm(); // Reset button nếu có lỗi
+            return;
+        }
+        
         const form = document.getElementById('imageForm');
         const formData = new FormData(form);
         
@@ -236,10 +276,11 @@
             return;
         }
         
+        console.log('🚀 Bắt đầu tạo ảnh:', data);
+        
         // Show loading state
         showStatus();
-        document.getElementById('generateBtn').disabled = true;
-        document.getElementById('generateBtn').innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang tạo...';
+        generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang tạo...';
         
         // Start image generation
         fetch('/api/generate-image', {
@@ -251,15 +292,27 @@
         })
         .then(response => response.json())
         .then(result => {
-            if (result.error) {
-                throw new Error(result.error);
+            console.log('📡 API Response:', result);
+            
+            if (result.error || !result.success) {
+                // Xử lý từ chối từ backend
+                if (result.error_code === 'TASK_RUNNING') {
+                    console.log('❌ Backend từ chối: Có task đang chạy');
+                    alert('⚠️ BACKEND TỪ CHỐI REQUEST!\n\n' +
+                          '• Server phát hiện có task khác đang chạy\n' +
+                          '• Chrome browser đang được sử dụng\n' +
+                          '• Vui lòng chờ task hiện tại hoàn thành\n\n' +
+                          'Hãy kiểm tra Chrome có đang mở FreePik không?');
+                }
+                throw new Error(result.message || result.error || 'Có lỗi xảy ra');
             }
             
             currentTaskId = result.task_id;
+            console.log('🆔 Task ID:', currentTaskId);
             checkTaskStatus();
         })
         .catch(error => {
-            console.error('Error:', error);
+            console.error('❌ Error:', error);
             showError(error.message);
             resetForm();
         });

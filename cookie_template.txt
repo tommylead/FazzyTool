@@ -1,30 +1,16 @@
-════════════════════════════════════════════════════════════════════════════════
-🍪 HƯỚNG DẪN LẤY COOKIE FREEPIK PREMIUM (QUAN TRỌNG!)
-════════════════════════════════════════════════════════════════════════════════
+=== HƯỚNG DẪN THIẾT LẬP COOKIE FREEPIK ===
 
-⚠️  CHÚ Ý: Bạn phải có tài khoản Freepik Premium để sử dụng AI tools!
-
-📋 CÁCH LẤY COOKIE TỪ FIREFOX (KHUYÊN DÙNG):
-
-1. 🌐 Mở Firefox, đăng nhập vào https://www.freepik.com
-2. 🔑 Đảm bảo đã đăng nhập và có quyền Premium
-3. 🛠️ Nhấn F12 để mở Developer Tools
-4. 📂 Vào tab "Storage" 
-5. 🍪 Click vào "Cookies" → "https://www.freepik.com"
-6. 📋 Copy tất cả cookies theo định dạng JSON
-
-🔧 CÁCH EXPORT COOKIE JSON:
-- Click chuột phải vào cookie list → "Export All" hoặc "Copy All"
-- Hoặc sử dụng Console: document.cookie
-
-📝 ĐỊNH DẠNG COOKIE:
-Paste cookie JSON array vào dưới đây (thay thế phần === ===):
+1. Đăng nhập vào Freepik.com bằng Google Chrome
+2. Nhấn F12 để mở Developer Tools
+3. Chọn tab Application > Storage > Cookies > https://www.freepik.com
+4. Click chuột phải > Copy > Copy all as JSON
+5. Dán cookie JSON vào đây (giữa hai dòng marker bên dưới)
 
 === PASTE COOKIE JSON VÀO ĐÂY ===
 [
     {
         "domain": ".freepik.com",
-        "expirationDate": 1785075519,
+        "expirationDate": 1785332047,
         "hostOnly": false,
         "httpOnly": false,
         "name": "ab.storage.deviceId.35bcbbc0-d0b5-4e6c-9926-dfe1d0cd06ab",
@@ -33,11 +19,11 @@ Paste cookie JSON array vào dưới đây (thay thế phần === ===):
         "secure": false,
         "session": false,
         "storeId": null,
-        "value": "g%3Aa131f586-2300-372e-1507-fd2e2b65743a%7Ce%3Aundefined%7Cc%3A1750514851388%7Cl%3A1750514851388"
+        "value": "g%3Aa131f586-2300-372e-1507-fd2e2b65743a%7Ce%3Aundefined%7Cc%3A1750514851388%7Cl%3A1750749410465"
     },
     {
         "domain": ".freepik.com",
-        "expirationDate": 1750521827.993026,
+        "expirationDate": 1750779246.204935,
         "hostOnly": false,
         "httpOnly": false,
         "name": "ak_bmsc",
@@ -46,24 +32,11 @@ Paste cookie JSON array vào dưới đây (thay thế phần === ===):
         "secure": false,
         "session": false,
         "storeId": null,
-        "value": "1DF483E725EFE2DD334903200238EA16~000000000000000000000000000000~YAAQ04TerfZOpXmXAQAAu3nNkhy2IPXt3lCeNvT67nF9cLJXEIgMkgaMaL+FtX8A3sWnlbLX5GH8aNWOykIBej1soGn4Fyu1VA5DJCr+/0PWIxJlLME3f/ZQwvmbao5fAHJl3552X9CLysXrwLOI7SD/aqeBROXXIXUnVGt6U7Ji9IYSl6srFyK1owPneMQJn3bDe9I6vRjM4A90zdvVYqsBtcUoNdHseLRykmuA15gPbBZgL5ofiwZBGd00m4ejllpjdPNuByC3LxHuEOeivH98J2djZJKhKeEBru9k8RxFD86e6BoZHqyLOz8oJbI+5rkUtmkkL8oTGHOJ77OXJ8RbBVOPG2hDhH2+CjOMfuEifD7SSAFKSXLMmKDt8JkaU9ONEXkWcw/S5l0="
-    },
-    {
-        "domain": "www.freepik.com",
-        "expirationDate": 1750518409.409623,
-        "hostOnly": true,
-        "httpOnly": false,
-        "name": "FP_TE",
-        "path": "/",
-        "sameSite": null,
-        "secure": false,
-        "session": false,
-        "storeId": null,
-        "value": "1750518409"
+        "value": "CA3467064A1E0D82C2A7E425CD482CD4~000000000000000000000000000000~YAAQJ+YkFyufH5uXAQAAFlwlohyV0flkLUyqd6QXO4DJ1tlwYhHF1lmR7AXhDx83lAiEQAz7TUDEKtlq1Hq5UC/g/5sb2U4x+1w334DxxReGSHB5zroiBUxOomahiBGhheWwfLeDUy/sTZlC/BDn3aA2nce/nu/N3DscaeQMw4Y9wjtCBRIapeqc66sLzNDh+9IAgDeggbqoJuGuunY9ajOjsZHp1FFvEV0AC3hQ3WFk6OhrNjt/WkeFEvUaqifb+snADhIuMgofcgvbeNEzuOBHNL8oSIzQk8scFAc/783H5L6faBxyJrilJwNuwjWSKuCixpOpzzVcpCqwvGKl3D2KPvZ87KkcVpzXLHUHO//cfnn6o49PFLvUuOF6/vAxxAQ="
     },
     {
         "domain": ".freepik.com",
-        "expirationDate": 1785075521.06583,
+        "expirationDate": 1785332049.303727,
         "hostOnly": false,
         "httpOnly": false,
         "name": "_ga_QWX66025LC",
@@ -72,11 +45,11 @@ Paste cookie JSON array vào dưới đây (thay thế phần === ===):
         "secure": false,
         "session": false,
         "storeId": null,
-        "value": "GS2.1.s1750514631$o1$g1$t1750515521$j60$l0$h0"
+        "value": "GS2.1.s1750772049$o14$g0$t1750772049$j60$l0$h0"
     },
     {
         "domain": ".freepik.com",
-        "expirationDate": 1785075521.066213,
+        "expirationDate": 1785332049.304557,
         "hostOnly": false,
         "httpOnly": false,
         "name": "_ga",
@@ -127,7 +100,7 @@ Paste cookie JSON array vào dưới đây (thay thế phần === ===):
     },
     {
         "domain": ".freepik.com",
-        "expirationDate": 1785075521,
+        "expirationDate": 1785332049,
         "hostOnly": false,
         "httpOnly": false,
         "name": "ab.storage.sessionId.35bcbbc0-d0b5-4e6c-9926-dfe1d0cd06ab",
@@ -136,11 +109,11 @@ Paste cookie JSON array vào dưới đây (thay thế phần === ===):
         "secure": false,
         "session": false,
         "storeId": null,
-        "value": "g%3Abe07cb3e-fd2b-f889-7751-ca681501fd3e%7Ce%3A1750551521005%7Cc%3A1750514851386%7Cl%3A1750515521005"
+        "value": "g%3Ac7ec3aa8-b94c-bdde-2fec-64a2a252d869%7Ce%3A1750808049257%7Cc%3A1750749410464%7Cl%3A1750772049257"
     },
     {
         "domain": ".freepik.com",
-        "expirationDate": 1785075519,
+        "expirationDate": 1785332047,
         "hostOnly": false,
         "httpOnly": false,
         "name": "ab.storage.userId.35bcbbc0-d0b5-4e6c-9926-dfe1d0cd06ab",
@@ -149,19 +122,7 @@ Paste cookie JSON array vào dưới đây (thay thế phần === ===):
         "secure": false,
         "session": false,
         "storeId": null,
-        "value": "g%3A68512731%7Ce%3Aundefined%7Cc%3A1750514851384%7Cl%3A1750514851387"
-    },
-    {
-        "domain": "www.freepik.com",
-        "hostOnly": true,
-        "httpOnly": false,
-        "name": "FP_MBL",
-        "path": "/",
-        "sameSite": null,
-        "secure": false,
-        "session": true,
-        "storeId": null,
-        "value": "1"
+        "value": "g%3A68512731%7Ce%3Aundefined%7Cc%3A1750514851384%7Cl%3A1750749410466"
     },
     {
         "domain": "www.freepik.com",
@@ -204,16 +165,16 @@ Paste cookie JSON array vào dưới đây (thay thế phần === ===):
     },
     {
         "domain": ".freepik.com",
-        "expirationDate": 1750516120.773116,
+        "expirationDate": 1750772646.204903,
         "hostOnly": false,
         "httpOnly": true,
         "name": "GR_TOKEN",
         "path": "/",
-        "sameSite": "lax",
+        "sameSite": "strict",
         "secure": true,
         "session": false,
         "storeId": null,
-        "value": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjNiZjA1MzkxMzk2OTEzYTc4ZWM4MGY0MjcwMzM4NjM2NDA2MTBhZGMiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiYWRtaW5mdHNtIiwicGljdHVyZSI6Imh0dHBzOi8vYXZhdGFyLmNkbnBrLm5ldC9kZWZhdWx0XzA0LnBuZyIsImFjY291bnRzX3VzZXJfaWQiOjY4NTEyNzMxLCJzY29wZXMiOiJmcmVlcGlrL2ltYWdlcyBmcmVlcGlrL3ZpZGVvcyBmbGF0aWNvbi9wbmcgZmxhdGljb24vc3ZnIiwiaXNzIjoiaHR0cHM6Ly9zZWN1cmV0b2tlbi5nb29nbGUuY29tL2ZjLXByb2ZpbGUtcHJvLXJldjEiLCJhdWQiOiJmYy1wcm9maWxlLXByby1yZXYxIiwiYXV0aF90aW1lIjoxNzUwNTE0ODA5LCJ1c2VyX2lkIjoiZDZhN2VjOTlmMjlhNGE4Njg5Y2FhMTg1MjdhYTVlMzgiLCJzdWIiOiJkNmE3ZWM5OWYyOWE0YTg2ODljYWExODUyN2FhNWUzOCIsImlhdCI6MTc1MDUxNDg0OCwiZXhwIjoxNzUwNTE4NDQ4LCJlbWFpbCI6InBlbnRhZGJpci1wZXJpc2lhbkB1a20uZWR1Lm15IiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImZpcmViYXNlIjp7ImlkZW50aXRpZXMiOnsiZ29vZ2xlLmNvbSI6WyIxMTUyNjkwNTk2MjI3ODEyMjMyNTMiXSwiZW1haWwiOlsicGVudGFkYmlyLXBlcmlzaWFuQHVrbS5lZHUubXkiXX0sInNpZ25faW5fcHJvdmlkZXIiOiJjdXN0b20ifX0.Z1PJufjqTE0B1oE2kZwnrFU3uOo7Dza29Da0derSsBn6c5jCjGNFN_XNLoiZcyPZ8JPjfPkKlHRt5nNOT_TjQ4NThAb9mHI9gpGoiUvN5FH_hdAX4FcGMy8VEUP-Ssjp703N4P4UAOFBwWRk-2LqjpJGoX15fu2pFQhnKXe1vBtE9DrZi-Y3TTDrvcJq-fjt1t0jyvyLITuqGKbihW1anaxLwK3B_qF-MTYsCTqvMiX8DF1N-y0kRNCcmoMSzNDqdgK-lnVm0xCGePuiNq9LeagYaLy84LSwwBVBH_gKP-cY6d5KgjGRwD0WQaeep2mrNhoybdJuk7u33VRbU_EO9Q"
+        "value": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjNiZjA1MzkxMzk2OTEzYTc4ZWM4MGY0MjcwMzM4NjM2NDA2MTBhZGMiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiYWRtaW5mdHNtIiwicGljdHVyZSI6Imh0dHBzOi8vYXZhdGFyLmNkbnBrLm5ldC9kZWZhdWx0XzA0LnBuZyIsImFjY291bnRzX3VzZXJfaWQiOjY4NTEyNzMxLCJzY29wZXMiOiJmcmVlcGlrL2ltYWdlcyBmcmVlcGlrL3ZpZGVvcyBmbGF0aWNvbi9wbmcgZmxhdGljb24vc3ZnIiwiaXNzIjoiaHR0cHM6Ly9zZWN1cmV0b2tlbi5nb29nbGUuY29tL2ZjLXByb2ZpbGUtcHJvLXJldjEiLCJhdWQiOiJmYy1wcm9maWxlLXByby1yZXYxIiwiYXV0aF90aW1lIjoxNzUwNTE0ODA5LCJ1c2VyX2lkIjoiZDZhN2VjOTlmMjlhNGE4Njg5Y2FhMTg1MjdhYTVlMzgiLCJzdWIiOiJkNmE3ZWM5OWYyOWE0YTg2ODljYWExODUyN2FhNWUzOCIsImlhdCI6MTc1MDc3MjA0NiwiZXhwIjoxNzUwNzc1NjQ2LCJlbWFpbCI6InBlbnRhZGJpci1wZXJpc2lhbkB1a20uZWR1Lm15IiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImZpcmViYXNlIjp7ImlkZW50aXRpZXMiOnsiZ29vZ2xlLmNvbSI6WyIxMTUyNjkwNTk2MjI3ODEyMjMyNTMiXSwiZW1haWwiOlsicGVudGFkYmlyLXBlcmlzaWFuQHVrbS5lZHUubXkiXX0sInNpZ25faW5fcHJvdmlkZXIiOiJjdXN0b20ifX0.bFFTWWk0SZ1v5bPpPPVwoZhCSkfQh0LYpxcvrbWTdScYAy-2EDT8S8RV4FLr7sPJaBHDY0F1ARWa3sgrkDvDrh_Oi8z2DA3skTcxyhOGzYvAFMrmxm-ZSX8u8CmfxJMG_d6Av49_XcNHbpGC0L1w0g6rYsUj5HIXPgiG41K0YAMbxJPEkitCcCHqkeolcls26LdKyL7bMdy9PCOis2o2Ix_Gvmp5zuYK-qPZu1DHFZtOZ8Rc4djQSaQOGOKpOD6cBPmcaFD5OvRtBIPrBReYRGXbRbyn_EJM8xrwt_I3urT0mytwNO-UXAaL0EJqJbHYfIsSsZ_xtx5Q9d2QPGkJnw"
     },
     {
         "domain": ".freepik.com",
@@ -230,7 +191,7 @@ Paste cookie JSON array vào dưới đây (thay thế phần === ===):
     },
     {
         "domain": ".freepik.com",
-        "expirationDate": 1782051518,
+        "expirationDate": 1782308046,
         "hostOnly": false,
         "httpOnly": false,
         "name": "OptanonConsent",
@@ -239,11 +200,11 @@ Paste cookie JSON array vào dưới đây (thay thế phần === ===):
         "secure": false,
         "session": false,
         "storeId": null,
-        "value": "isGpcEnabled=0&datestamp=Sat+Jun+21+2025+21%3A18%3A38+GMT%2B0700+(Indochina+Time)&version=202505.1.0&browserGpcFlag=0&isIABGlobal=false&hosts=&consentId=e419f4f3-2ba7-4c76-9e81-c6cbddebc2fa&interactionCount=1&isAnonUser=1&landingPath=NotLandingPage&groups=C0001%3A1%2CC0002%3A0%2CC0003%3A0%2CC0004%3A0%2CC0005%3A0&intType=3&geolocation=VN%3BSG&AwaitingReconsent=false"
+        "value": "isGpcEnabled=0&datestamp=Tue+Jun+24+2025+20%3A34%3A06+GMT%2B0700+(Indochina+Time)&version=202505.1.0&browserGpcFlag=0&isIABGlobal=false&hosts=&consentId=e419f4f3-2ba7-4c76-9e81-c6cbddebc2fa&interactionCount=1&isAnonUser=1&landingPath=NotLandingPage&groups=C0001%3A1%2CC0002%3A0%2CC0003%3A0%2CC0004%3A0%2CC0005%3A0&intType=3&geolocation=VN%3BSG&AwaitingReconsent=false"
     },
     {
         "domain": ".freepik.com",
-        "expirationDate": 1782051521,
+        "expirationDate": 1782308049,
         "hostOnly": false,
         "httpOnly": false,
         "name": "ph_phc_Rc6y1yvZwwwR09Pl9NtKBo5gzpxr1Ei4Bdbg3kC1Ihz_posthog",
@@ -252,36 +213,24 @@ Paste cookie JSON array vào dưới đây (thay thế phần === ===):
         "secure": true,
         "session": false,
         "storeId": null,
-        "value": "%7B%22distinct_id%22%3A%227505858%22%2C%22%24sesid%22%3A%5B1750515521008%2C%22019792d0-d900-7977-a66b-73faf7d390aa%22%2C1750514850048%5D%2C%22%24epp%22%3Atrue%2C%22%24initial_person_info%22%3A%7B%22r%22%3A%22https%3A%2F%2Fwww.freepik.com%2F%3Flog-in%3Dgoogle%22%2C%22u%22%3A%22https%3A%2F%2Fwww.freepik.com%2Fpikaso%2Fai-video-generator%23from_element%3Dmainmenu%22%7D%7D"
+        "value": "%7B%22distinct_id%22%3A%227505858%22%2C%22%24sesid%22%3A%5B1750772049261%2C%220197a225-5f9f-7bc0-a467-45a6e10c69f1%22%2C1750772047775%5D%2C%22%24epp%22%3Atrue%2C%22%24initial_person_info%22%3A%7B%22r%22%3A%22https%3A%2F%2Fwww.freepik.com%2F%3Flog-in%3Dgoogle%22%2C%22u%22%3A%22https%3A%2F%2Fwww.freepik.com%2Fpikaso%2Fai-video-generator%23from_element%3Dmainmenu%22%7D%7D"
     },
     {
         "domain": "www.freepik.com",
-        "expirationDate": 1750517322.872476,
+        "expirationDate": 1750773850.824867,
         "hostOnly": true,
         "httpOnly": true,
         "name": "pikaso_session",
         "path": "/pikaso",
-        "sameSite": "strict",
+        "sameSite": "lax",
         "secure": true,
         "session": false,
         "storeId": null,
-        "value": "eyJpdiI6IlRxd2hYUlVaNnJ6TkZWN0E5YWFsT0E9PSIsInZhbHVlIjoicDVDdW1VZWpkRytCSEh5OG1PVkRDa1Nsa1dsNUdxdFRoVlhGK1lGQzNkNmNVK1hYNlhKdWI4VzJ3R1BqN2lacWVjM3JkcS94enRoVHFXa2wwVGprMk1IdDdEeVFpd2hIYzljaU4xeWhpdEt3Sk83alN0Z3pXL2FScG5RUXhZc3ciLCJtYWMiOiIwYmFhYmE0YzQwZjE1N2E0NjJhOGRiNjc0N2E4NmU0MWVhZTgwZjVjZjlmNjYzMzk5Y2RhMzY1MWE0YmNkNmY5IiwidGFnIjoiIn0%3D"
+        "value": "eyJpdiI6IjZKWWdiM3AzYWF5YkZkL0EyYzdNSVE9PSIsInZhbHVlIjoicXdrSEF6enFiWnBzMGtHaDhjZVAvSml6amtXak5obkwxaVdSczc0cDBTUDJMY2NJd0tUcVZETk1TMzgvV20wekRJMGxyRjhuV1Q0MHpLanBYWnZ0SzQyVTZOVG1ncGhZR0wyZy9mVDYxSEdLVGcxS3Fjc0FnQ0xvRFJPUTlRV3oiLCJtYWMiOiI5MmUyZWNiZThlODI0ZDRlNzMxMTZkZWQ2NjA0OTliZTdmYWU0MjlkYTZjNzQyNWNmZjZiMDA4ZWJiYjY0ODJjIiwidGFnIjoiIn0%3D"
     },
     {
         "domain": "www.freepik.com",
-        "hostOnly": true,
-        "httpOnly": false,
-        "name": "UID",
-        "path": "/",
-        "sameSite": null,
-        "secure": false,
-        "session": true,
-        "storeId": null,
-        "value": "68512731"
-    },
-    {
-        "domain": "www.freepik.com",
-        "expirationDate": 1750517322.828852,
+        "expirationDate": 1750773850.82479,
         "hostOnly": true,
         "httpOnly": false,
         "name": "XSRF-TOKEN",
@@ -290,14 +239,9 @@ Paste cookie JSON array vào dưới đây (thay thế phần === ===):
         "secure": true,
         "session": false,
         "storeId": null,
-        "value": "eyJpdiI6Ik5EakxDOHpITTA0Z1dCbHJDV1hkUGc9PSIsInZhbHVlIjoiMDM1RnhtSXJoM3BrRGRPcU1NRVJnMkpOMDFhUm9jZnpSWlFiWlFIOHdlenpjTERDZG1NenBYSjJuRGxhRUxVNnk2Nmh3d1preVM0djZvRnVxVU5OOWFRa3YyQlN2bjVwaEhmaVRJL1VHc2lXVE4rVFZRcStIaWxibkdkNldjcDEiLCJtYWMiOiI2YWY0ODI5MWNmMGM2YjkxZTlkODkwZjU3NmNjZmU0MmMxZGU2OGE1ZDc4YTBjYWQ2MTNlNThmZmFiZTFhNjJmIiwidGFnIjoiIn0%3D"
+        "value": "eyJpdiI6IlVKdjNXeExORDB5c05PcUJ3QTdFUHc9PSIsInZhbHVlIjoiS2MreVM0RmxGOXBiNzRtN0lUazJ4T2twZFVMYUFtZ2VIS2dDRDl3dWFjQUMyRllwcGZoMVc1WEVpSFE1Yjd6S2JiSXFLMWp1WEtVa29oRis1dVlnWHdybTBYUURMTW96S2hPSXZ2ZmVPaVFVWTdpK2lyUHNwcWdTYlVwUHBLaUkiLCJtYWMiOiJhOGU5Y2QyZTJjNTJhZjhjN2FlNzYyZTcyNDdjNzYzM2U2ZTk4MThkNmVmZGU0ZWVjNTE0MjEyM2VmZTMzZGRkIiwidGFnIjoiIn0%3D"
     }
 ]
 === KẾT THÚC COOKIE ===
 
-💡 TIPS:
-- Phải dùng Firefox để lấy cookie (tool dùng Firefox engine)
-- Cookie quan trọng: GR_TOKEN, GR_REFRESH, GRID, UID
-- Cookie sẽ hết hạn sau 1-2 tuần, cần cập nhật lại
-- Nếu không hoạt động, thử đăng xuất/đăng nhập lại Freepik
-- Kiểm tra tài khoản Premium còn hiệu lực không 
+LƯU Ý: Cookie phải đúng định dạng JSON như trên và chứa các cookie quan trọng của Freepik! 

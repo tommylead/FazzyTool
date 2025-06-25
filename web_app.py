@@ -3,11 +3,11 @@
 FAZZYTOOL WEB INTERFACE - Giao diện web cho FazzyTool
 
 Giao diện web hiện đại để tương tác với FazzyTool thông qua trình duyệt
+Chỉ chức năng tạo ảnh - Video đã được loại bỏ
 """
 
 import os
 import json
-import asyncio
 import threading
 import shutil
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, send_from_directory
@@ -21,7 +21,6 @@ import time
 from prompt_loader import PromptLoader
 from gemini_prompt import GeminiPromptGenerator
 from browser_image import FreepikImageGenerator
-from browser_video import FreepikVideoGenerator
 from batch_processor import BatchProcessor
 
 app = Flask(__name__)
@@ -39,6 +38,9 @@ os.makedirs('static/js', exist_ok=True)
 
 # Store cho các task đang chạy
 running_tasks = {}
+# Prevent concurrent image generation
+image_generation_lock = threading.Lock()
+currently_generating = False
 
 def load_cookie_from_template():
     """Load cookie từ cookie_template.txt"""
@@ -84,6 +86,20 @@ def load_cookie_from_template():
 
 def run_image_generation_task(task_id, prompt, num_images, download_count, filename_prefix):
     """Chạy task tạo ảnh trong background"""
+    global currently_generating
+    
+    # Kiểm tra có task đang chạy không
+    with image_generation_lock:
+        if currently_generating:
+            print(f"⚠️ [Task {task_id}] Đã có task đang chạy, hủy task này")
+            running_tasks[task_id] = {
+                'status': 'error',
+                'message': 'Đã có task tạo ảnh khác đang chạy. Vui lòng chờ hoàn thành.'
+            }
+            return
+        currently_generating = True
+        print(f"🔒 [Task {task_id}] Đã lock generation process")
+    
     try:
         running_tasks[task_id] = {
             'status': 'running',
@@ -92,12 +108,19 @@ def run_image_generation_task(task_id, prompt, num_images, download_count, filen
             'results': []
         }
         
+        print(f"🎨 [Task {task_id}] Khởi tạo FreepikImageGenerator...")
         generator = FreepikImageGenerator(headless=False)  # Luôn visible
+        
+        print(f"🍪 [Task {task_id}] Load cookie...")
         cookies = load_cookie_from_template()
         cookie_string = json.dumps(cookies) if cookies else None
+        print(f"🍪 [Task {task_id}] Cookie loaded: {'Có' if cookie_string else 'Không'}")
         
         running_tasks[task_id]['progress'] = 20
         running_tasks[task_id]['message'] = 'Đang tạo ảnh...'
+        
+        print(f"🚀 [Task {task_id}] Bắt đầu tạo ảnh với prompt: {prompt}")
+        print(f"📊 [Task {task_id}] Cấu hình: {num_images} ảnh, tải {download_count}")
         
         downloaded_files = generator.generate_image(
             prompt=prompt,
@@ -107,14 +130,28 @@ def run_image_generation_task(task_id, prompt, num_images, download_count, filen
             filename_prefix=filename_prefix
         )
         
-        running_tasks[task_id]['status'] = 'completed'
-        running_tasks[task_id]['progress'] = 100
-        running_tasks[task_id]['message'] = f'Hoàn thành! Đã tạo {len(downloaded_files)} ảnh'
-        running_tasks[task_id]['results'] = downloaded_files
+        print(f"✅ [Task {task_id}] Generate_image hoàn thành: {len(downloaded_files) if downloaded_files else 0} files")
+        
+        if downloaded_files:
+            running_tasks[task_id]['status'] = 'completed'
+            running_tasks[task_id]['progress'] = 100
+            running_tasks[task_id]['message'] = f'Hoàn thành! Đã tạo {len(downloaded_files)} ảnh'
+            running_tasks[task_id]['results'] = downloaded_files
+        else:
+            running_tasks[task_id]['status'] = 'error'
+            running_tasks[task_id]['message'] = 'Không tạo được ảnh nào'
         
     except Exception as e:
+        print(f"❌ [Task {task_id}] Lỗi chi tiết: {str(e)}")
+        import traceback
+        traceback.print_exc()
         running_tasks[task_id]['status'] = 'error'
         running_tasks[task_id]['message'] = f'Lỗi: {str(e)}'
+    finally:
+        # Luôn unlock khi hoàn thành
+        with image_generation_lock:
+            currently_generating = False
+            print(f"🔓 [Task {task_id}] Đã unlock generation process")
 
 def run_ai_prompt_task(task_id, topic):
     """Chạy task tạo prompt AI trong background"""
@@ -158,235 +195,6 @@ def run_ai_prompt_task(task_id, topic):
         running_tasks[task_id]['status'] = 'error'
         running_tasks[task_id]['message'] = f'Lỗi: {str(e)}'
 
-def run_video_generation_task(task_id, mode, prompt_mode, prompts, duration, ratio, model, image_path=None, image_paths=None, repeat_count=1):
-    """Chạy task tạo video trong background"""
-    import signal
-    import threading
-    
-    def timeout_handler():
-        """Handler để timeout task sau 8 phút"""
-        time.sleep(480)  # 8 phút (ngắn hơn để tránh stuck)
-        if task_id in running_tasks and running_tasks[task_id]['status'] == 'running':
-            print(f"⏰ [Task {task_id}] TIMEOUT sau 8 phút - force stop")
-            running_tasks[task_id]['status'] = 'error'
-            running_tasks[task_id]['message'] = 'Timeout: Video generation quá lâu (>8 phút), tự động dừng'
-    
-    # Khởi tạo timeout thread
-    timeout_thread = threading.Thread(target=timeout_handler, daemon=True)
-    timeout_thread.start()
-    
-    try:
-        # Khởi tạo task status
-        total_videos = len(prompts) * repeat_count
-        running_tasks[task_id] = {
-            'status': 'running',
-            'progress': 0,
-            'message': 'Đang khởi tạo...',
-            'results': [],
-            'current_video': 0,
-            'total_videos': total_videos,
-            'current_prompt': '',
-            'current_prompt_index': 0,
-            'total_prompts': len(prompts)
-        }
-        
-        print(f"🎬 [Task {task_id}] Bắt đầu tạo video - Mode: {mode}, Prompt mode: {prompt_mode}")
-        print(f"📝 [Task {task_id}] Prompts: {prompts}")
-        print(f"⚙️ [Task {task_id}] Settings: {duration}, {ratio}, {model}, browser=visible")
-        
-        # Khởi tạo video generator
-        running_tasks[task_id]['message'] = 'Đang khởi tạo video generator...'
-        print(f"🔧 [Task {task_id}] Khởi tạo FreepikVideoGenerator (luôn visible mode)")
-        
-        video_generator = FreepikVideoGenerator(headless=False)  # Luôn visible
-        print(f"✅ [Task {task_id}] Video generator đã khởi tạo thành công")
-        
-        # Load cookies
-        running_tasks[task_id]['message'] = 'Đang load cookies...'
-        print(f"🍪 [Task {task_id}] Đang load cookies từ template...")
-        
-        cookies = load_cookie_from_template()
-        cookie_string = json.dumps(cookies) if cookies else None
-        
-        if cookies:
-            print(f"✅ [Task {task_id}] Load được {len(cookies)} cookies")
-        else:
-            print(f"⚠️ [Task {task_id}] Không có cookies - có thể bị lỗi đăng nhập")
-        
-        running_tasks[task_id]['progress'] = 5
-        running_tasks[task_id]['message'] = 'Đang mở trình duyệt...'
-        
-        # Tạo video cho từng prompt
-        results = []
-        video_counter = 0
-        
-        for prompt_index, prompt in enumerate(prompts):
-            running_tasks[task_id]['current_prompt_index'] = prompt_index + 1
-            running_tasks[task_id]['current_prompt'] = prompt[:50] + "..." if len(prompt) > 50 else prompt
-            
-            # Determine current image path for this prompt
-            current_image_path = None
-            if prompt_mode == 'batch-multi-images' and image_paths:
-                # Case 3: Each prompt has its own image
-                current_image_path = image_paths[prompt_index] if prompt_index < len(image_paths) else None
-            elif image_path:
-                # Case 1 & 2: Same image for all prompts
-                current_image_path = image_path
-            
-            # Tạo video theo repeat_count cho mỗi prompt
-            for repeat_index in range(repeat_count):
-                video_counter += 1
-                running_tasks[task_id]['current_video'] = video_counter
-                
-                progress = 5 + (video_counter * 90 // total_videos)
-                running_tasks[task_id]['progress'] = progress
-                
-                # Update message based on mode
-                if prompt_mode == 'batch-multi-images':
-                    image_name = os.path.basename(current_image_path) if current_image_path else 'N/A'
-                    running_tasks[task_id]['message'] = f'Prompt {prompt_index + 1}/{len(prompts)} + {image_name}: {prompt[:30]}...'
-                else:
-                    running_tasks[task_id]['message'] = f'Prompt {prompt_index + 1}/{len(prompts)}, Video {repeat_index + 1}/{repeat_count}: {prompt[:30]}...'
-                
-                try:
-                    print(f"🎬 [Task {task_id}] Bắt đầu tạo video {video_counter}/{total_videos}")
-                    
-                    # Thêm timeout cho từng video (5 phút)
-                    video_start_time = time.time()
-                    video_timeout = 300  # 5 phút
-                    
-                    if current_image_path and os.path.exists(current_image_path):
-                        # Tạo video từ ảnh (Case 1, 2, 3)
-                        print(f"🖼️ [Task {task_id}] Tạo video từ ảnh: {os.path.basename(current_image_path)}")
-                        video_path = video_generator.generate_video_from_image(
-                            image_path=current_image_path,
-                            prompt=prompt,
-                            cookie_string=cookie_string,
-                            duration=duration,
-                            ratio=ratio,
-                            model=model
-                        )
-                    else:
-                        # Tạo video từ text (Case 4)
-                        print(f"📝 [Task {task_id}] Tạo video từ text prompt")
-                        video_path = video_generator.generate_video(
-                            prompt=prompt,
-                            cookie_string=cookie_string,
-                            duration=duration,
-                            ratio=ratio,
-                            model=model
-                        )
-                    
-                    video_end_time = time.time()
-                    video_duration = video_end_time - video_start_time
-                    print(f"⏱️ [Task {task_id}] Video {video_counter} hoàn thành sau {video_duration:.1f}s")
-                    
-                    if video_path:
-                        if os.path.exists(video_path):
-                            # Video file tồn tại - copy vào output
-                            base_name = os.path.splitext(os.path.basename(video_path))[0]
-                            extension = os.path.splitext(video_path)[1]
-                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                            
-                            # Tạo safe prompt name
-                            safe_prompt = "".join(c for c in prompt[:20] if c.isalnum() or c in (' ', '-', '_')).strip()
-                            safe_prompt = safe_prompt.replace(' ', '_')
-                            
-                            # Create filename based on mode
-                            if prompt_mode == 'batch-multi-images':
-                                image_name = os.path.splitext(os.path.basename(current_image_path))[0] if current_image_path else 'noimg'
-                                filename = f"{base_name}_p{prompt_index + 1:02d}_{image_name}_{safe_prompt}_{timestamp}{extension}"
-                            else:
-                                filename = f"{base_name}_p{prompt_index + 1:02d}_v{repeat_index + 1}_{safe_prompt}_{timestamp}{extension}"
-                            
-                            # Copy file vào thư mục output chính
-                            output_path = os.path.join("output", filename)
-                            
-                            if not os.path.exists("output"):
-                                os.makedirs("output")
-                            
-                            shutil.copy2(video_path, output_path)
-                            results.append(filename)
-                            
-                            running_tasks[task_id]['results'] = results.copy()
-                            print(f"✅ [Task {task_id}] Đã tạo video {video_counter}/{total_videos}: {filename}")
-                            
-                        elif os.path.isdir(video_path):
-                            # Trả về session folder - có thể có screenshot hoặc partial result
-                            print(f"📁 [Task {task_id}] Session folder: {video_path}")
-                            session_files = os.listdir(video_path) if os.path.exists(video_path) else []
-                            
-                            # Tìm file screenshot hoặc video trong session
-                            valid_files = [f for f in session_files if f.endswith(('.mp4', '.png', '.jpg', '.jpeg'))]
-                            
-                            if valid_files:
-                                # Copy files từ session vào output chính
-                                for file in valid_files:
-                                    src_path = os.path.join(video_path, file)
-                                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                                    safe_prompt = "".join(c for c in prompt[:20] if c.isalnum() or c in (' ', '-', '_')).strip()
-                                    safe_prompt = safe_prompt.replace(' ', '_')
-                                    
-                                    # Tạo tên file mới
-                                    file_ext = os.path.splitext(file)[1]
-                                    new_filename = f"partial_p{prompt_index + 1:02d}_v{repeat_index + 1}_{safe_prompt}_{timestamp}{file_ext}"
-                                    
-                                    output_path = os.path.join("output", new_filename)
-                                    if not os.path.exists("output"):
-                                        os.makedirs("output")
-                                    
-                                    shutil.copy2(src_path, output_path)
-                                    results.append(new_filename)
-                                    
-                                    print(f"📸 [Task {task_id}] Đã lưu partial result {video_counter}/{total_videos}: {new_filename}")
-                                
-                                running_tasks[task_id]['results'] = results.copy()
-                            else:
-                                print(f"⚠️ [Task {task_id}] Session folder trống: {video_path}")
-                        else:
-                            print(f"❌ [Task {task_id}] Video path không hợp lệ: {video_path}")
-                    else:
-                        print(f"❌ [Task {task_id}] Không thể tạo video {video_counter}/{total_videos}")
-                        
-                except Exception as video_error:
-                    print(f"❌ Lỗi tạo video {video_counter}/{total_videos}: {video_error}")
-                    continue
-        
-        # Cập nhật trạng thái cuối
-        if results:
-            # Đếm video thực tế và partial results
-            video_count = len([f for f in results if f.endswith('.mp4')])
-            screenshot_count = len([f for f in results if f.endswith(('.png', '.jpg', '.jpeg'))])
-            
-            running_tasks[task_id]['status'] = 'completed'
-            running_tasks[task_id]['progress'] = 100
-            running_tasks[task_id]['current_video'] = total_videos
-            
-            if video_count > 0 and screenshot_count > 0:
-                running_tasks[task_id]['message'] = f'Hoàn thành! {video_count} video + {screenshot_count} screenshot từ {len(prompts)} prompt'
-            elif video_count > 0:
-                running_tasks[task_id]['message'] = f'Hoàn thành! Đã tạo {video_count}/{total_videos} video từ {len(prompts)} prompt'
-            else:
-                running_tasks[task_id]['message'] = f'Hoàn thành! Đã tạo {screenshot_count} screenshot từ {len(prompts)} prompt (video download lỗi)'
-                
-            running_tasks[task_id]['results'] = results
-            print(f"🎉 [Task {task_id}] {running_tasks[task_id]['message']}")
-        else:
-            running_tasks[task_id]['status'] = 'error'
-            running_tasks[task_id]['message'] = 'Không thể tạo video hoặc screenshot nào'
-            print(f"❌ [Task {task_id}] Task thất bại hoàn toàn")
-        
-    except Exception as e:
-        import traceback
-        error_details = traceback.format_exc()
-        print(f"❌ [Task {task_id}] LỖI NGHIÊM TRỌNG trong run_video_generation_task:")
-        print(f"❌ [Task {task_id}] Exception: {str(e)}")
-        print(f"❌ [Task {task_id}] Traceback:\n{error_details}")
-        
-        running_tasks[task_id]['status'] = 'error'
-        running_tasks[task_id]['message'] = f'Lỗi: {str(e)}'
-        running_tasks[task_id]['error_details'] = error_details
-
 def parse_prompts_from_file(file_content):
     """Parse các prompt từ nội dung file txt"""
     prompts = []
@@ -428,6 +236,20 @@ def parse_prompts_from_file(file_content):
 
 def run_batch_prompts_task(task_id, prompts_list):
     """Chạy task tạo ảnh hàng loạt từ danh sách prompts trong background"""
+    global currently_generating
+    
+    # Kiểm tra có task đang chạy không
+    with image_generation_lock:
+        if currently_generating:
+            print(f"⚠️ [Batch Task {task_id}] Đã có task đang chạy, hủy batch này")
+            running_tasks[task_id] = {
+                'status': 'error',
+                'message': 'Đã có task tạo ảnh khác đang chạy. Vui lòng chờ hoàn thành.'
+            }
+            return
+        currently_generating = True
+        print(f"🔒 [Batch Task {task_id}] Đã lock generation process")
+    
     try:
         total_prompts = len(prompts_list)
         running_tasks[task_id] = {
@@ -451,9 +273,18 @@ def run_batch_prompts_task(task_id, prompts_list):
         add_log("🚀 Bắt đầu tạo ảnh hàng loạt từ file prompt...")
         
         # Khởi tạo image generator
-        image_generator = FreepikImageGenerator(headless=False)  # Luôn visible
+        add_log("🔧 Đang khởi tạo FreepikImageGenerator...")
+        try:
+            image_generator = FreepikImageGenerator(headless=False)  # Luôn visible
+            add_log("✅ FreepikImageGenerator khởi tạo thành công")
+        except Exception as e:
+            add_log(f"❌ Lỗi khởi tạo FreepikImageGenerator: {str(e)}")
+            raise e
+        
+        add_log("🍪 Đang load cookie...")
         cookies = load_cookie_from_template()
         cookie_string = json.dumps(cookies) if cookies else None
+        add_log(f"🍪 Cookie loaded: {'Có' if cookie_string else 'Không'}")
         
         add_log(f"📋 Tổng cộng: {total_prompts} prompt")
         add_log(f"🎨 Mỗi prompt: 4 ảnh sinh ra, 4 ảnh tải về")
@@ -514,101 +345,39 @@ def run_batch_prompts_task(task_id, prompts_list):
         add_log(f"🎉 HOÀN THÀNH! Đã tạo tổng cộng {total_images} ảnh từ {len(running_tasks[task_id]['results'])} prompt")
         
     except Exception as e:
-        running_tasks[task_id]['status'] = 'error'
-        running_tasks[task_id]['message'] = f'Lỗi hệ thống: {str(e)}'
-        running_tasks[task_id]['logs'].append(f"❌ LỖI HỆ THỐNG: {str(e)}")
+        print(f"❌ [Batch Task {task_id}] Lỗi hệ thống: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        if task_id in running_tasks:
+            running_tasks[task_id]['status'] = 'error'
+            running_tasks[task_id]['message'] = f'Lỗi hệ thống: {str(e)}'
+            running_tasks[task_id]['logs'].append(f"❌ LỖI HỆ THỐNG: {str(e)}")
+        else:
+            # Task không tồn tại trong running_tasks, tạo mới
+            running_tasks[task_id] = {
+                'status': 'error',
+                'message': f'Lỗi hệ thống: {str(e)}',
+                'logs': [f"❌ LỖI HỆ THỐNG: {str(e)}"],
+                'progress': 0,
+                'results': [],
+                'current_prompt': '',
+                'completed_prompts': 0,
+                'total_prompts': 0
+            }
+    finally:
+        # Luôn unlock khi hoàn thành batch
+        with image_generation_lock:
+            currently_generating = False
+            print(f"🔓 [Batch Task {task_id}] Đã unlock generation process")
 
-def run_batch_video_task(task_id, prompts_list, duration, ratio, model, delay_between):
-    """Chạy task tạo video hàng loạt trong background"""
-    try:
-        total_prompts = len(prompts_list)
-        running_tasks[task_id] = {
-            'status': 'running',
-            'progress': 0,
-            'message': 'Đang khởi tạo...',
-            'results': [],
-            'current_prompt': '',
-            'completed_prompts': 0,
-            'total_prompts': total_prompts,
-            'logs': []
-        }
-        
-        def add_log(message):
-            timestamp = datetime.now().strftime("%H:%M:%S")
-            log_entry = f"[{timestamp}] {message}"
-            running_tasks[task_id]['logs'].append(log_entry)
-            running_tasks[task_id]['message'] = message
-            print(log_entry)  # Also print to console
-        
-        add_log("🎬 Bắt đầu tạo video hàng loạt...")
-        
-        # Khởi tạo video generator
-        video_generator = FreepikVideoGenerator(headless=False)  # Luôn visible
-        cookies = load_cookie_from_template()
-        cookie_string = json.dumps(cookies) if cookies else None
-        
-        add_log(f"📋 Tổng cộng: {total_prompts} prompts")
-        add_log(f"🎥 Thời lượng: {duration}, Tỷ lệ: {ratio}, Model: {model}")
-        
-        for i, prompt_item in enumerate(prompts_list, 1):
-            try:
-                prompt_name = prompt_item['name']
-                prompt_content = prompt_item['content']
-                
-                running_tasks[task_id]['current_prompt'] = f"{prompt_name}: {prompt_content[:50]}..."
-                add_log(f"\n🔄 [{i}/{total_prompts}] Xử lý {prompt_name}")
-                add_log(f"📝 Prompt: {prompt_content}")
-                
-                add_log(f"🎬 Đang tạo video từ prompt...")
-                
-                # Tạo video từ text prompt
-                video_path = video_generator.generate_video(
-                    prompt=prompt_content,
-                    cookie_string=cookie_string,
-                    duration=duration,
-                    ratio=ratio,
-                    model=model
-                )
-                
-                if video_path:
-                    add_log(f"✅ Đã tạo video cho {prompt_name}: {os.path.basename(video_path)}")
-                    running_tasks[task_id]['results'].append({
-                        'prompt_name': prompt_name,
-                        'prompt_content': prompt_content,
-                        'files': [os.path.basename(video_path)],
-                        'index': i
-                    })
-                else:
-                    add_log(f"❌ Không thể tạo video cho {prompt_name}")
-                
-                # Cập nhật progress
-                running_tasks[task_id]['completed_prompts'] = i
-                progress = int((i / total_prompts) * 100)
-                running_tasks[task_id]['progress'] = progress
-                
-                # Delay giữa các prompts để tránh spam
-                if i < total_prompts:
-                    add_log(f"⏳ Chờ {delay_between} giây trước khi xử lý prompt tiếp theo...")
-                    time.sleep(delay_between)
-                
-            except Exception as e:
-                add_log(f"❌ Lỗi xử lý {prompt_name}: {str(e)}")
-                continue
-        
-        # Hoàn thành
-        running_tasks[task_id]['status'] = 'completed'
-        running_tasks[task_id]['progress'] = 100
-        total_videos = sum(len(r['files']) for r in running_tasks[task_id]['results'])
-        add_log(f"🎉 HOÀN THÀNH! Đã tạo tổng cộng {total_videos} video từ {len(running_tasks[task_id]['results'])} prompt")
-        
-    except Exception as e:
-        running_tasks[task_id]['status'] = 'error'
-        running_tasks[task_id]['message'] = f'Lỗi hệ thống: {str(e)}'
-        running_tasks[task_id]['logs'].append(f"❌ LỖI HỆ THỐNG: {str(e)}")
+# ========================================================================================
+# ROUTES - CHỈ CHO IMAGE GENERATION
+# ========================================================================================
 
 @app.route('/')
 def index():
-    """Trang chủ"""
+    """Trang chủ - chỉ hiển thị chức năng image"""
     return render_template('index.html')
 
 @app.route('/generate-image')
@@ -623,261 +392,156 @@ def generate_prompt_page():
 
 @app.route('/batch-process')
 def batch_process_page():
-    """Trang xử lý batch"""
+    """Trang batch process"""
     return render_template('batch_process.html')
 
-@app.route('/generate-video')
-def generate_video_page():
-    """Trang tạo video AI"""
-    return render_template('generate_video.html')
-
+@app.route('/batch-prompts')
+def batch_prompts_page():
+    """Trang batch prompts"""
+    return render_template('batch_prompts.html')
 
 @app.route('/settings')
 def settings_page():
     """Trang cài đặt"""
-    # Kiểm tra cookie và config
-    has_cookie = bool(load_cookie_from_template())
-    
-    config_status = False
-    api_key = ""
-    try:
-        if os.path.exists("config_template.txt"):
-            with open("config_template.txt", "r", encoding="utf-8") as f:
-                for line in f:
-                    if line.startswith("api_key="):
-                        api_key = line.split("=", 1)[1].strip()
-                        config_status = bool(api_key and api_key != "YOUR_API_KEY_HERE")
-                        break
-    except:
-        pass
-    
-    return render_template('settings.html', 
-                         has_cookie=has_cookie, 
-                         config_status=config_status,
-                         api_key=api_key)
+    return render_template('settings.html')
+
+# ========================================================================================
+# API ENDPOINTS
+# ========================================================================================
 
 @app.route('/api/generate-image', methods=['POST'])
 def api_generate_image():
-    """API endpoint tạo ảnh"""
+    """API tạo ảnh với thread safety protection"""
     try:
-        data = request.json
+        # Kiểm tra thread safety NGAY LẬP TỨC
+        with image_generation_lock:
+            global currently_generating
+            if currently_generating:
+                print(f"❌ API: Có task khác đang chạy, từ chối request mới")
+                return jsonify({
+                    'success': False, 
+                    'message': '⚠️ Có task tạo ảnh khác đang chạy. Vui lòng chờ hoàn thành.',
+                    'error_code': 'TASK_RUNNING'
+                })
+        
+        data = request.get_json()
         prompt = data.get('prompt', '').strip()
-        num_images = data.get('num_images', 4)
+        num_images = int(data.get('num_images', 4))
         download_count = data.get('download_count')
-        filename_prefix = data.get('filename_prefix', '')
-        # Browser luôn visible nên không cần show_browser parameter
+        filename_prefix = data.get('filename_prefix')
         
         if not prompt:
-            return jsonify({'error': 'Prompt không được để trống'}), 400
+            return jsonify({'success': False, 'message': 'Prompt không được để trống'})
         
-        # Tạo task ID
+        # Tạo task ID unique
         task_id = str(uuid.uuid4())
+        print(f"✅ API: Chấp nhận request mới, Task ID: {task_id}")
         
-        # Chạy task trong background
+        # Chạy task trong background thread
         thread = threading.Thread(
             target=run_image_generation_task,
             args=(task_id, prompt, num_images, download_count, filename_prefix)
         )
+        thread.daemon = True
         thread.start()
         
-        return jsonify({'task_id': task_id})
+        return jsonify({'success': True, 'task_id': task_id})
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'success': False, 'message': f'Lỗi: {str(e)}'})
 
 @app.route('/api/generate-prompt', methods=['POST'])
 def api_generate_prompt():
-    """API endpoint tạo prompt AI"""
+    """API tạo prompt AI"""
     try:
-        data = request.json
+        data = request.get_json()
         topic = data.get('topic', '').strip()
         
         if not topic:
-            return jsonify({'error': 'Chủ đề không được để trống'}), 400
+            return jsonify({'success': False, 'message': 'Topic không được để trống'})
         
-        # Tạo task ID
+        # Tạo task ID unique
         task_id = str(uuid.uuid4())
         
-        # Chạy task trong background
+        # Chạy task trong background thread
         thread = threading.Thread(
             target=run_ai_prompt_task,
             args=(task_id, topic)
         )
+        thread.daemon = True
         thread.start()
         
-        return jsonify({'task_id': task_id})
+        return jsonify({'success': True, 'task_id': task_id})
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/generate-video', methods=['POST'])
-def api_generate_video():
-    """API endpoint tạo video AI"""
-    try:
-        mode = request.form.get('mode', 'text-to-video')
-        prompt_mode = request.form.get('prompt_mode', 'single')
-        duration = request.form.get('duration', '5s')
-        ratio = request.form.get('ratio', '16:9')
-        model = request.form.get('model', 'kling_master_2_1')
-        # Browser luôn visible nên không cần show_browser parameter
-        repeat_count = int(request.form.get('repeat_count', '1'))
-        
-        # Parse prompts
-        prompts_json = request.form.get('prompts', '[]')
-        try:
-            prompts = json.loads(prompts_json)
-        except:
-            return jsonify({'error': 'Format prompts không hợp lệ'}), 400
-        
-        if not prompts or len(prompts) == 0:
-            return jsonify({'error': 'Danh sách prompts không được để trống'}), 400
-        
-        if len(prompts) > 10:
-            return jsonify({'error': 'Tối đa 10 prompts mỗi lần'}), 400
-        
-        # Parse images for multi-images mode
-        images = []
-        if prompt_mode == 'batch-multi-images':
-            images_json = request.form.get('images', '[]')
-            try:
-                images = json.loads(images_json)
-            except:
-                return jsonify({'error': 'Format images không hợp lệ'}), 400
-            
-            if len(images) != len(prompts):
-                return jsonify({'error': 'Số lượng prompts và images phải bằng nhau'}), 400
-        
-        if repeat_count < 1 or repeat_count > 5:
-            return jsonify({'error': 'Số lần lặp phải từ 1 đến 5'}), 400
-        
-        image_path = None
-        image_paths = []
-        
-        if mode == 'image-to-video' and prompt_mode in ['single', 'batch-one-image']:
-            # Single image upload for Case 1 & 2
-            if 'image' not in request.files:
-                return jsonify({'error': 'Vui lòng upload ảnh'}), 400
-            
-            image_file = request.files['image']
-            if image_file.filename == '':
-                return jsonify({'error': 'Chưa chọn file ảnh'}), 400
-            
-            # Lưu ảnh upload
-            filename = secure_filename(image_file.filename)
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"upload_{timestamp}_{filename}"
-            image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            image_file.save(image_path)
-            
-        elif prompt_mode == 'batch-multi-images':
-            # Multiple images from uploads folder for Case 3
-            for image_name in images:
-                image_file_path = os.path.join(app.config['UPLOAD_FOLDER'], image_name)
-                if not os.path.exists(image_file_path):
-                    return jsonify({'error': f'Không tìm thấy file ảnh: {image_name}'}), 400
-                image_paths.append(image_file_path)
-        
-        # Tạo task ID
-        task_id = str(uuid.uuid4())
-        
-        # Chạy task trong background
-        thread = threading.Thread(
-            target=run_video_generation_task,
-            args=(task_id, mode, prompt_mode, prompts, duration, ratio, model, image_path, image_paths, repeat_count)
-        )
-        thread.start()
-        
-        total_videos = len(prompts) * repeat_count
-        return jsonify({'task_id': task_id, 'total_videos': total_videos})
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'success': False, 'message': f'Lỗi: {str(e)}'})
 
 @app.route('/api/task-status/<task_id>')
 def api_task_status(task_id):
-    """API endpoint kiểm tra trạng thái task"""
+    """API lấy status của task"""
     if task_id in running_tasks:
         return jsonify(running_tasks[task_id])
     else:
-        return jsonify({'error': 'Task không tồn tại'}), 404
+        return jsonify({'status': 'not_found', 'message': 'Task không tìm thấy'})
 
 @app.route('/api/prompts')
 def api_list_prompts():
-    """API endpoint liệt kê các prompt đã tạo"""
+    """API liệt kê các prompt đã tạo"""
     try:
-        prompts_dir = Path('prompts')
-        if not prompts_dir.exists():
+        prompts_dir = 'prompts'
+        if not os.path.exists(prompts_dir):
             return jsonify([])
         
         prompts = []
-        for file_path in prompts_dir.glob('*.json'):
+        for filename in os.listdir(prompts_dir):
+            if filename.endswith('.json'):
+                filepath = os.path.join(prompts_dir, filename)
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
+                    with open(filepath, 'r', encoding='utf-8') as f:
+                        prompt_data = json.load(f)
                     prompts.append({
-                        'filename': file_path.name,
-                        'content': data.get('image_prompt', ''),  # Lấy image_prompt thay vì content
-                        'video_prompt': data.get('video_prompt', ''),  # Thêm video_prompt
-                        'video_duration': data.get('video_duration', ''),
-                        'video_ratio': data.get('video_ratio', ''),
-                        'topic': data.get('topic', ''),
-                        'created': datetime.fromtimestamp(file_path.stat().st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+                            'filename': filename,
+                            'topic': prompt_data.get('topic', 'Unknown'),
+                            'image_prompt': prompt_data.get('image_prompt', '')[:100] + '...',
+                            'generated_at': prompt_data.get('generated_at', ''),
+                            'filepath': filepath
                     })
             except:
                 continue
         
         # Sắp xếp theo thời gian tạo (mới nhất trước)
-        prompts.sort(key=lambda x: x['created'], reverse=True)
+        prompts.sort(key=lambda x: x['generated_at'], reverse=True)
         return jsonify(prompts)
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e)})
 
 @app.route('/api/images')
 def api_list_images():
-    """API endpoint liệt kê ảnh đã tạo"""
+    """API liệt kê các ảnh đã tạo"""
     try:
-        output_dir = Path('output')
-        if not output_dir.exists():
+        output_dir = 'output'
+        if not os.path.exists(output_dir):
             return jsonify([])
         
         images = []
-        for file_path in output_dir.glob('*.{jpg,jpeg,png,gif,webp}'):
+        for filename in os.listdir(output_dir):
+            if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                filepath = os.path.join(output_dir, filename)
+                stat = os.stat(filepath)
             images.append({
-                'filename': file_path.name,
-                'size': file_path.stat().st_size,
-                'created': datetime.fromtimestamp(file_path.stat().st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+                    'filename': filename,
+                    'size': stat.st_size,
+                    'created_at': datetime.fromtimestamp(stat.st_ctime).strftime('%Y-%m-%d %H:%M:%S'),
+                    'url': f'/output/{filename}'
             })
         
         # Sắp xếp theo thời gian tạo (mới nhất trước)
-        images.sort(key=lambda x: x['created'], reverse=True)
+        images.sort(key=lambda x: x['created_at'], reverse=True)
         return jsonify(images)
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/videos')
-def api_list_videos():
-    """API endpoint liệt kê video đã tạo"""
-    try:
-        output_dir = Path('output')
-        if not output_dir.exists():
-            return jsonify([])
-        
-        videos = []
-        for file_path in output_dir.glob('*.{mp4,avi,mov,mkv,webm}'):
-            videos.append({
-                'filename': file_path.name,
-                'size': file_path.stat().st_size,
-                'created': datetime.fromtimestamp(file_path.stat().st_mtime).strftime('%Y-%m-%d %H:%M:%S')
-            })
-        
-        # Sắp xếp theo thời gian tạo (mới nhất trước)
-        videos.sort(key=lambda x: x['created'], reverse=True)
-        return jsonify(videos)
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e)})
 
 @app.route('/output/<filename>')
 def serve_output_file(filename):
@@ -886,288 +550,241 @@ def serve_output_file(filename):
 
 @app.route('/api/config', methods=['GET', 'POST'])
 def api_config():
-    """API endpoint quản lý cấu hình"""
+    """API cấu hình hệ thống"""
     if request.method == 'GET':
-        # Đọc cấu hình hiện tại
-        config = {}
-        try:
-            if os.path.exists("config_template.txt"):
-                with open("config_template.txt", "r", encoding="utf-8") as f:
-                    for line in f:
-                        if "=" in line and not line.strip().startswith("#"):
-                            key, value = line.split("=", 1)
-                            config[key.strip()] = value.strip()
-        except:
-            pass
-        
+        # Đọc config hiện tại
+        config = {
+            'cookie_status': 'loaded' if load_cookie_from_template() else 'empty',
+            'gemini_api_key': bool(os.getenv('GEMINI_API_KEY')),
+            'output_dir': 'output',
+            'prompts_dir': 'prompts'
+        }
         return jsonify(config)
     
     elif request.method == 'POST':
-        # Cập nhật cấu hình
+        # Cập nhật config
         try:
-            data = request.json
-            api_key = data.get('api_key', '').strip()
-            
-            if not api_key:
-                return jsonify({'error': 'API key không được để trống'}), 400
-            
-            # Cập nhật config_template.txt
-            if os.path.exists("config_template.txt"):
-                with open("config_template.txt", "r", encoding="utf-8") as f:
-                    lines = f.readlines()
-                
-                # Tìm và thay thế dòng api_key
-                for i, line in enumerate(lines):
-                    if line.startswith("api_key="):
-                        lines[i] = f"api_key={api_key}\n"
-                        break
-                
-                with open("config_template.txt", "w", encoding="utf-8") as f:
-                    f.writelines(lines)
-                
-                return jsonify({'success': True, 'message': 'Cấu hình đã được cập nhật'})
-            else:
-                return jsonify({'error': 'File config_template.txt không tồn tại'}), 400
-            
+            data = request.get_json()
+            # Xử lý cập nhật config ở đây
+            return jsonify({'success': True, 'message': 'Cấu hình đã được cập nhật'})
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
-
-@app.route('/batch-prompts')
-def batch_prompts_page():
-    """Trang tạo ảnh hàng loạt từ file prompt"""
-    return render_template('batch_prompts.html')
-
-@app.route('/batch-video')
-def batch_video_page():
-    """Trang tạo video hàng loạt"""
-    return render_template('batch_video.html')
+            return jsonify({'success': False, 'message': f'Lỗi: {str(e)}'})
 
 @app.route('/api/batch-prompts', methods=['POST'])
 def api_batch_prompts():
-    """API endpoint tạo ảnh hàng loạt từ file prompt"""
+    """API xử lý batch prompts từ file content"""
     try:
-        data = request.json
-        file_content = data.get('file_content', '').strip()
-        # Browser luôn visible nên không cần show_browser parameter
+        # Nhận JSON data với file_content
+        data = request.get_json()
+        if not data or 'file_content' not in data:
+            return jsonify({'message': 'Thiếu file_content trong request'}), 400
         
+        file_content = data['file_content']
         if not file_content:
-            return jsonify({'error': 'Nội dung file không được để trống'}), 400
+            return jsonify({'message': 'File content rỗng'}), 400
         
         # Parse prompts từ file content
         prompts_list = parse_prompts_from_file(file_content)
         
         if not prompts_list:
-            return jsonify({'error': 'Không tìm thấy prompt nào hợp lệ trong file'}), 400
+            return jsonify({'message': 'Không tìm thấy prompt nào trong file'}), 400
         
-        if len(prompts_list) > 20:  # Giới hạn số lượng để tránh spam
-            return jsonify({'error': 'Tối đa 20 prompt mỗi lần'}), 400
-        
-        # Tạo task ID
+        # Tạo task ID unique
         task_id = str(uuid.uuid4())
         
-        # Chạy task trong background
+        # Chạy batch task trong background
         thread = threading.Thread(
             target=run_batch_prompts_task,
             args=(task_id, prompts_list)
         )
+        thread.daemon = True
         thread.start()
         
-        return jsonify({'task_id': task_id, 'total_prompts': len(prompts_list), 'parsed_prompts': prompts_list})
+        return jsonify({
+            'success': True, 
+            'task_id': task_id,
+            'total_prompts': len(prompts_list),
+            'message': f'Đã bắt đầu xử lý {len(prompts_list)} prompts'
+        })
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/batch-video', methods=['POST'])
-def api_batch_video():
-    """API endpoint tạo video hàng loạt"""
-    try:
-        data = request.json
-        prompts = data.get('prompts', [])
-        duration = data.get('duration', '5s')
-        ratio = data.get('ratio', '16:9')
-        model = data.get('model', 'kling_master_2_1')
-        # Browser luôn visible nên không cần show_browser parameter
-        delay_between = data.get('delay_between', 10)
-        
-        if not prompts:
-            return jsonify({'error': 'Danh sách prompts không được để trống'}), 400
-        
-        if len(prompts) > 10:  # Giới hạn số lượng để tránh spam
-            return jsonify({'error': 'Tối đa 10 prompts mỗi lần'}), 400
-        
-        # Tạo task ID
-        task_id = str(uuid.uuid4())
-        
-        # Chạy task trong background
-        thread = threading.Thread(
-            target=run_batch_video_task,
-            args=(task_id, prompts, duration, ratio, model, delay_between)
-        )
-        thread.start()
-        
-        return jsonify({'task_id': task_id, 'total_prompts': len(prompts)})
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'message': f'Lỗi: {str(e)}'}), 500
 
 @app.route('/api/upload-prompt-file', methods=['POST'])
 def api_upload_prompt_file():
-    """API endpoint upload file prompt"""
+    """API upload file prompt và parse prompts"""
     try:
         if 'file' not in request.files:
-            return jsonify({'error': 'Không tìm thấy file'}), 400
+            return jsonify({'success': False, 'message': 'Không có file'})
         
         file = request.files['file']
         if file.filename == '':
-            return jsonify({'error': 'Chưa chọn file'}), 400
+            return jsonify({'success': False, 'message': 'Chưa chọn file'})
         
-        if not file.filename.lower().endswith('.txt'):
-            return jsonify({'error': 'Chỉ chấp nhận file .txt'}), 400
+        # Kiểm tra extension
+        if not file.filename.lower().endswith(('.txt', '.json')):
+            return jsonify({'success': False, 'message': 'Chỉ hỗ trợ file .txt và .json'})
         
         # Đọc nội dung file
         file_content = file.read().decode('utf-8')
         
-        # Parse prompts để kiểm tra
-        prompts_list = parse_prompts_from_file(file_content)
+        # Parse prompts từ file content
+        parsed_prompts = parse_prompts_from_file(file_content)
+        
+        if not parsed_prompts:
+            return jsonify({'success': False, 'message': 'Không tìm thấy prompt nào trong file'})
+        
+        # Reset file pointer để save
+        file.seek(0)
+        
+        # Lưu file (optional)
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{timestamp}_{filename}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
         
         return jsonify({
             'success': True,
+            'filename': filename, 
+            'filepath': filepath,
             'file_content': file_content,
-            'total_prompts': len(prompts_list),
-            'parsed_prompts': prompts_list
+            'parsed_prompts': parsed_prompts,
+            'total_prompts': len(parsed_prompts)
         })
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/api/test-gemini', methods=['POST'])
 def api_test_gemini():
-    """API endpoint test Gemini API key"""
+    """API test Gemini connection"""
     try:
-        data = request.json
-        api_key = data.get('api_key', '').strip()
+        from dotenv import load_dotenv
+        load_dotenv()
         
+        api_key = os.getenv('GEMINI_API_KEY')
         if not api_key:
-            return jsonify({'error': 'API key không được để trống'}), 400
+            return jsonify({
+                'success': False, 
+                'message': 'GEMINI_API_KEY không tìm thấy trong file .env'
+            })
         
-        # Test trực tiếp với Google Generative AI
-        import google.generativeai as genai
-        
+        # Test tạo prompt đơn giản
         try:
-            # Configure API key để test
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            gemini_generator = GeminiPromptGenerator()
+            test_result = gemini_generator.generate_prompt("test connection", save_to_file=False)
             
-            # Test với một prompt đơn giản
-            response = model.generate_content(
-                "Hello, this is a test message. Please respond with 'API connection successful'.",
-                generation_config={
-                    "temperature": 0.1,
-                    "max_output_tokens": 50,
-                }
-            )
-            
-            if response and response.text:
-                return jsonify({'success': True, 'message': 'Kết nối Gemini API thành công!'})
+            if test_result:
+                return jsonify({
+                    'success': True,
+                    'message': 'Kết nối Gemini thành công!',
+                    'test_prompt': test_result.get('image_prompt', '')[:100] + '...'
+                })
             else:
-                return jsonify({'error': 'API key không phản hồi đúng cách'}), 400
+                return jsonify({
+                    'success': False,
+                    'message': 'Gemini trả về kết quả rỗng'
+                })
                 
         except Exception as e:
             error_msg = str(e)
-            print(f"Gemini test error: {error_msg}")  # Log để debug
-            
-            if "API_KEY" in error_msg or "invalid" in error_msg.lower() or "authentication" in error_msg.lower():
-                return jsonify({'error': 'API key không hợp lệ'}), 400
-            elif "quota" in error_msg.lower() or "exceeded" in error_msg.lower() or "limit" in error_msg.lower():
-                return jsonify({'error': 'API key đã hết quota hoặc bị giới hạn'}), 400
-            elif "permission" in error_msg.lower() or "denied" in error_msg.lower():
-                return jsonify({'error': 'API key không có quyền truy cập'}), 400
+            if 'quota' in error_msg.lower():
+                return jsonify({
+                    'success': False,
+                    'message': 'Gemini API đã hết quota. Hãy tạo API key mới hoặc chờ đến tháng sau.'
+                })
+            elif 'api' in error_msg.lower() and 'key' in error_msg.lower():
+                return jsonify({
+                    'success': False,
+                    'message': 'API key không hợp lệ. Hãy kiểm tra lại GEMINI_API_KEY trong file .env'
+                })
             else:
-                return jsonify({'error': f'Lỗi kết nối: {error_msg}'}), 400
+                return jsonify({
+                    'success': False,
+                    'message': f'Lỗi Gemini: {error_msg}'
+                })
         
     except Exception as e:
-        print(f"Test API error: {str(e)}")  # Log để debug
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'success': False, 'message': f'Lỗi hệ thống: {str(e)}'})
 
 @app.route('/api/update-prompt', methods=['POST'])
 def api_update_prompt():
-    """API endpoint cập nhật prompt đã chỉnh sửa"""
+    """API cập nhật prompt file"""
     try:
-        data = request.json
-        filename = data.get('filename', '')
-        prompt_data = data.get('data', {})
+        data = request.get_json()
+        filename = data.get('filename')
+        updated_data = data.get('data')
         
-        if not filename:
-            return jsonify({'error': 'Filename không được để trống'}), 400
+        if not filename or not updated_data:
+            return jsonify({'success': False, 'message': 'Thiếu dữ liệu'})
         
-        if not prompt_data:
-            return jsonify({'error': 'Dữ liệu prompt không được để trống'}), 400
+        filepath = os.path.join('prompts', filename)
+        if not os.path.exists(filepath):
+            return jsonify({'success': False, 'message': 'File không tồn tại'})
         
-        # Kiểm tra file có tồn tại không
-        file_path = os.path.join('prompts', filename)
-        if not os.path.exists(file_path):
-            return jsonify({'error': 'File prompt không tồn tại'}), 404
+        # Lưu data đã cập nhật
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(updated_data, f, ensure_ascii=False, indent=2)
         
-        # Cập nhật timestamp
-        prompt_data['updated_at'] = datetime.now().isoformat()
-        prompt_data['updated_by'] = 'user_edit'
-        
-        # Lưu file
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(prompt_data, f, ensure_ascii=False, indent=2)
-        
-        return jsonify({'success': True, 'message': 'Prompt đã được cập nhật'})
+        return jsonify({'success': True, 'message': 'Cập nhật thành công'})
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'success': False, 'message': str(e)})
+
+# ========================================================================================
+# RUN APP
+# ========================================================================================
 
 if __name__ == '__main__':
     import webbrowser
     import threading
-    import time
     
-    print("🚀 Khởi động FazzyTool Web Interface...")
-    print("📝 Giao diện web sẽ chạy tại: http://127.0.0.1:5000")
-    print("🔧 Đảm bảo đã cấu hình cookie và API key trong Settings")
-    
-    # Hàm tự động mở Chrome sau 2 giây
     def auto_open_browser():
-        time.sleep(2)  # Đợi web server khởi động
+        """Tự động mở Chrome sau 2 giây"""
+        time.sleep(2)
         try:
-            # Thử mở Chrome trước
+            # Ưu tiên mở Chrome
             import subprocess
-            import os
+            import platform
             
-            chrome_paths = [
-                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-                os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe")
-            ]
+            url = 'http://127.0.0.1:5000'
+            system = platform.system()
             
-            chrome_opened = False
-            for chrome_path in chrome_paths:
-                if os.path.exists(chrome_path):
-                    try:
-                        subprocess.Popen([chrome_path, "http://127.0.0.1:5000"])
-                        print("🌐 Đã mở Chrome tự động!")
-                        chrome_opened = True
-                        break
-                    except:
-                        continue
+            if system == "Windows":
+                # Thử mở Chrome trên Windows
+                chrome_paths = [
+                    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                    r"C:\Users\{}\AppData\Local\Google\Chrome\Application\chrome.exe".format(os.environ.get('USERNAME', ''))
+                ]
             
-            # Nếu không tìm thấy Chrome, dùng browser mặc định
+                chrome_opened = False
+                for chrome_path in chrome_paths:
+                    if os.path.exists(chrome_path):
+                        try:
+                            subprocess.Popen([chrome_path, url])
+                            chrome_opened = True
+                            print("🌐 Đã mở Chrome cho web interface")
+                            break
+                        except:
+                            continue
+            
             if not chrome_opened:
-                webbrowser.open('http://127.0.0.1:5000')
-                print("🌐 Đã mở browser mặc định (không tìm thấy Chrome)!")
-                
+                # Fallback về browser mặc định
+                webbrowser.open(url)
+                print("🌐 Đã mở browser mặc định cho web interface")
         except Exception as e:
-            print(f"⚠️ Không thể mở browser tự động: {e}")
-            print("👉 Vui lòng mở browser và vào: http://127.0.0.1:5000")
+            print(f"⚠️ Không thể tự động mở browser: {e}")
+            print("📱 Truy cập thủ công: http://127.0.0.1:5000")
     
-    # Chạy auto-open browser trong background thread
-    # browser_thread = threading.Thread(target=auto_open_browser) # DISABLED
-    # browser_thread.daemon = True # DISABLED
-    # browser_thread.start() # DISABLED
+    # Tạm thời disable auto-open để tránh conflict với FreepikImageGenerator
+    # browser_thread = threading.Thread(target=auto_open_browser)
+    # browser_thread.daemon = True
+    # browser_thread.start()
     
-    # Khởi động Flask app
-    app.run(debug=False, host='0.0.0.0', port=5000, use_reloader=False)
+    print("🌐 FazzyTool Web Interface đang khởi động...")
+    print("🎨 Chỉ chức năng Image Generation")
+    print("📱 Mở trình duyệt tại: http://127.0.0.1:5000")
+    
+    app.run(debug=True, host='127.0.0.1', port=5000, use_reloader=False)

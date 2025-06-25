@@ -1,66 +1,118 @@
-# 📝 Hướng dẫn sử dụng chức năng "Batch từ file prompt"
+# 📝 Hướng Dẫn Sử Dụng Batch Prompts - FazzyTool
 
 ## 🎯 Mục đích
-Tạo ảnh hàng loạt từ file .txt chứa các prompt có sẵn (không sử dụng AI Gemini).
+Chức năng Batch Prompts giúp bạn tạo nhiều ảnh cùng lúc từ một file chứa nhiều prompts khác nhau.
 
-## 📁 Vị trí file mẫu
-- **File mẫu**: `sample_batch_prompts.txt` (trong thư mục gốc)
-- **File của bạn**: Có thể để bất kỳ đâu, upload qua web interface
+## 📋 Format File Prompts
 
-## 📋 Format file .txt
-
-### Quy tắc:
-1. Mỗi prompt bắt đầu bằng "Prompt" + số thứ tự
-2. Nội dung prompt viết tiếng Anh (để kết quả tốt nhất)
-3. Dòng trống để phân tách các prompt
-
-### Ví dụ:
+### ✅ Format Đúng:
 ```
 Prompt 1
-A cute orange cat in garden
+Mô tả ảnh đầu tiên ở đây...
 
-Prompt 2  
-Beautiful sunset over ocean
+Prompt 2
+Mô tả ảnh thứ hai ở đây...
 
 Prompt 3
-Futuristic robot in city
+Mô tả ảnh thứ ba ở đây...
 ```
 
-## 🚀 Cách sử dụng
+### ❌ Lưu Ý Quan Trọng:
+- **BẮT BUỘC** bắt đầu mỗi prompt bằng "Prompt X" (X là số thứ tự)
+- **KHÔNG** được thiếu dòng trống giữa các prompt
+- **KHÔNG** sử dụng ký tự đặc biệt trong tên prompt
+- File phải có đuôi `.txt`
 
-### Bước 1: Tạo file .txt
-- Copy file `sample_batch_prompts.txt` làm mẫu
-- Hoặc tạo file mới theo format trên
-- Lưu với encoding UTF-8
+## 🚀 Cách Sử Dụng
+
+### Bước 1: Chuẩn bị file prompts
+1. Tạo file `.txt` theo format ở trên
+2. Hoặc sử dụng file mẫu có sẵn:
+   - `batch_prompts_sample.txt` - Prompts đa dạng
+   - `batch_prompts_vietnam.txt` - Chủ đề Việt Nam
 
 ### Bước 2: Upload và xử lý
-1. Mở **FazzyTool Web Interface**: `python START_WEB.bat`
-2. Vào menu **"Batch từ file prompt"**
-3. Upload file .txt của bạn
-4. Nhấn **"Xem trước"** để kiểm tra
-5. Nhấn **"Bắt đầu tạo ảnh"**
+1. Vào FazzyTool Web Interface: `http://127.0.0.1:5000`
+2. Click vào tab **"Batch"** → **"Batch Prompts"**
+3. Click **"Chọn file"** và upload file `.txt`
+4. Click **"Bắt đầu xử lý"**
 
-### Bước 3: Theo dõi kết quả
-- Xem log real-time với màu sắc
-- Theo dõi progress bar
-- Xem ảnh trong gallery khi hoàn thành
+### Bước 3: Theo dõi tiến trình
+- Chrome sẽ tự động mở và bắt đầu tạo ảnh
+- Theo dõi progress trong web interface
+- Mỗi prompt sẽ tạo **4 ảnh**
+- Tất cả ảnh sẽ được tải về thư mục `output/`
 
-## ⚙️ Cấu hình mặc định
-- **Mỗi prompt**: 4 ảnh sinh ra → 4 ảnh tải về
-- **Delay**: 5 giây giữa các prompt  
-- **Giới hạn**: Tối đa 20 prompt/batch
-- **Output**: Lưu vào thư mục `output/`
+## 📊 Thông Số Mặc Định
+- **Số ảnh mỗi prompt**: 4 ảnh
+- **Tải về**: Tất cả ảnh được tạo
+- **Delay giữa prompts**: 5 giây
+- **Thư mục lưu**: `output/`
+- **Tên file**: `batch_XXX_prompt_name_timestamp.png`
 
-## 📊 Ước tính thời gian
-- **5 prompt** = 20 ảnh = ~15 phút
-- **10 prompt** = 40 ảnh = ~30 phút  
-- **20 prompt** = 80 ảnh = ~60 phút
+## 💡 Tips Viết Prompts Hiệu Quả
 
-## 💡 Tips hay
-1. **Test nhỏ trước**: Bắt đầu với 2-3 prompt
-2. **Tên file rõ ràng**: Ví dụ `my_prompts_2025.txt`
-3. **Kiểm tra cookie**: Đảm bảo đã cấu hình trong Settings
-4. **Prompt quality**: Viết tiếng Anh, mô tả chi tiết
+### ✅ Prompt Tốt:
+```
+A cute kitten playing with yarn, watercolor style, soft lighting, 4k quality
+```
+
+### ❌ Prompt Kém:
+```
+cat
+```
+
+### 🎨 Các từ khóa hữu ích:
+- **Style**: `watercolor, oil painting, digital art, photorealistic, cartoon`
+- **Lighting**: `soft lighting, dramatic lighting, golden hour, neon lights`
+- **Quality**: `4k, high resolution, detailed, sharp focus`
+- **Mood**: `peaceful, dramatic, mysterious, cheerful, nostalgic`
+
+## 🔧 Xử Lý Sự Cố
+
+### ❌ "Không tìm thấy prompt nào"
+- Kiểm tra format file (phải có "Prompt 1", "Prompt 2"...)
+- Đảm bảo file có đuôi `.txt`
+
+### ❌ "Có task khác đang chạy"
+- Chờ task hiện tại hoàn thành
+- Chỉ chạy 1 batch tại một thời điểm
+
+### ❌ Chrome không mở
+- Kiểm tra Chrome đã cài đặt
+- Đảm bảo không có Chrome instance khác đang chạy Freepik
+
+## 📁 File Mẫu Có Sẵn
+
+1. **`batch_prompts_sample.txt`**
+   - 10 prompts đa dạng
+   - Các chủ đề: động vật, phong cảnh, sci-fi, nghệ thuật
+
+2. **`batch_prompts_vietnam.txt`**
+   - 10 prompts chủ đề Việt Nam
+   - Các địa danh: Hạ Long, Hội An, Sapa, Hà Nội
+
+## 🎯 Ví Dụ Hoàn Chình
+
+```txt
+Prompt 1
+A majestic dragon flying over ancient mountains, fantasy art style, dramatic lighting, detailed scales, mythical atmosphere
+
+Prompt 2
+A peaceful Japanese garden with cherry blossoms, zen atmosphere, soft pink petals, traditional architecture, spring season
+
+Prompt 3
+A cyberpunk city at night, neon signs, flying cars, rain-soaked streets, futuristic buildings, purple and blue lighting
+```
+
+## ⚠️ Lưu Ý Quan Trọng
+
+1. **Chỉ một batch tại một thời điểm** - Hệ thống chỉ xử lý 1 task cùng lúc
+2. **Chrome sẽ mở tự động** - KHÔNG tắt Chrome khi đang xử lý
+3. **Thời gian xử lý** - Khoảng 30-60 giây mỗi prompt
+4. **Cần kết nối Internet** - Để truy cập Freepik AI
+5. **Free tier có giới hạn** - Cân nhắc số lượng prompts
 
 ---
-**🎨 Happy batch creating!** 
+
+💡 **Mẹo**: Bắt đầu với file nhỏ (3-5 prompts) để test trước khi chạy batch lớn! 
